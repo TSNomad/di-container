@@ -6,5 +6,6 @@
  */
 
 export { Container } from './Container.js';
-export type { Token, Factory, Binding } from './types.js';
+export type { Token, TypedToken, AnyToken, Factory, Binding } from './types.js';
+export { createToken } from './createToken.js';
 export { ContainerError, BindingNotFoundError, DuplicateBindingError } from './errors.js';

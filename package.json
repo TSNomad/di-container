@@ -26,6 +26,10 @@
     "./errors": {
       "types": "./dist/errors.d.ts",
       "default": "./dist/errors.js"
+    },
+    "./create-token": {
+      "types": "./dist/createToken.d.ts",
+      "default": "./dist/createToken.js"
     }
   },
   "files": [
@@ -36,8 +40,11 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "pretypecheck": "npm run build",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "pretest": "npm run build",
+    "test": "node --test"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
