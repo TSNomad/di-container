@@ -10,7 +10,7 @@ import { Container } from '../dist/Container.js';
 import { createToken } from '../dist/createToken.js';
 import { DuplicateBindingError } from '../dist/errors.js';
 
-test.skip('binding a typed token twice throws a DuplicateBindingError naming the token', () => {
+test('binding a typed token twice throws a DuplicateBindingError naming the token', () => {
   const portToken = createToken<number>('Port');
   const container = new Container();
 
@@ -23,7 +23,7 @@ test.skip('binding a typed token twice throws a DuplicateBindingError naming the
   );
 });
 
-test.skip('binding a typed token after a string token with the same name throws a DuplicateBindingError naming the token', () => {
+test('binding a typed token after a string token with the same name throws a DuplicateBindingError naming the token', () => {
   const container = new Container();
 
   container.bind('Port', () => 3000);
@@ -35,7 +35,7 @@ test.skip('binding a typed token after a string token with the same name throws 
   );
 });
 
-test.skip('binding a string token after a typed token with the same name throws a DuplicateBindingError naming the token', () => {
+test('binding a string token after a typed token with the same name throws a DuplicateBindingError naming the token', () => {
   const container = new Container();
 
   container.bind(createToken<number>('Port'), () => 3000);

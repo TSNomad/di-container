@@ -13,7 +13,7 @@ interface Connection {
   id: number;
 }
 
-test.skip('async factories and singleton caching hold for typed tokens', async () => {
+test('async factories and singleton caching hold for typed tokens', async () => {
   const connectionToken = createToken<Connection>('Connection');
   const container = new Container();
   let calls = 0;
@@ -35,7 +35,7 @@ test.skip('async factories and singleton caching hold for typed tokens', async (
   assert.equal(first.id, 1);
 });
 
-test.skip('an async singleton factory runs once under concurrent gets', async () => {
+test('an async singleton factory runs once under concurrent gets', async () => {
   const connectionToken = createToken<Connection>('Connection');
   const container = new Container();
   let calls = 0;
