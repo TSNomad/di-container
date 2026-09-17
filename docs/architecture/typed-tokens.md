@@ -159,10 +159,13 @@ it matched every time.
 
 ### a typed token binds and resolves with the inferred type
 
-Implemented `bind` and `get` to key both maps off `typeof token === 'string' ? token : token.name`.
+The test asserts on its own terms, with `assert.ok(logger && typeof
+logger.log === 'function', ...)` right after `get` resolves, before it
+calls `logger.log('hello')`. Implemented `bind` and `get` to key both
+maps off `typeof token === 'string' ? token : token.name`.
 
 ```
-✔ a typed token binds and resolves with the inferred type (1.212646ms)
+✔ a typed token binds and resolves with the inferred type (0.849709ms)
 ℹ pass 1
 ℹ fail 0
 ```
@@ -171,14 +174,16 @@ Deleted the behavior by reverting `get`'s typed branch to its stub
 (`return undefined as unknown as T`), leaving `bind` implemented:
 
 ```
-✖ a typed token binds and resolves with the inferred type (0.513087ms)
-  TypeError: Cannot read properties of undefined (reading 'log')
+✖ a typed token binds and resolves with the inferred type (0.802199ms)
+  AssertionError [ERR_ASSERTION]: the typed token resolves to the bound instance
       at TestContext.<anonymous> (test/typed-token-bind-resolve.test.ts:30:10)
 ```
 
-Failed because `get` handed back `undefined` again instead of the bound
-logger, the exact property this test guards. Scratch implementation
-discarded, `Container.ts` restored, marker restored.
+Failed on the test's own assertion message, not on a downstream
+`TypeError` from calling a method on `undefined`, because `get` handed
+back `undefined` again instead of the bound logger, the exact property
+this test guards. Scratch implementation discarded, `Container.ts`
+restored, marker restored.
 
 ### a string token still works
 

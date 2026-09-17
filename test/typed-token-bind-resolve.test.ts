@@ -27,6 +27,7 @@ test.skip('a typed token binds and resolves with the inferred type', async () =>
   // No generic argument here. The token alone tells TypeScript that
   // `logger` is a Logger.
   const logger = await container.get(loggerToken);
+  assert.ok(logger && typeof logger.log === 'function', 'the typed token resolves to the bound instance');
   logger.log('hello');
 
   assert.deepEqual(seen, ['hello']);
