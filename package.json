@@ -4,19 +4,40 @@
   "description": "Dependency injection container with sync and async factories and singleton caching, the TypeScript counterpart to PHPNomad's di-container",
   "type": "module",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/tsnomad/di-container.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tsnomad/di-container.git"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./container": { "types": "./dist/Container.d.ts", "default": "./dist/Container.js" },
-    "./types": { "types": "./dist/types.d.ts", "default": "./dist/types.js" },
-    "./errors": { "types": "./dist/errors.d.ts", "default": "./dist/errors.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./container": {
+      "types": "./dist/Container.d.ts",
+      "default": "./dist/Container.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    }
   },
-  "files": ["dist", "src", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
