@@ -1,8 +1,8 @@
 # Typed tokens
 
-Status: implementation phase complete. The acceptance tests below have had
-their skip markers removed and the container's typed-token code paths are
-implemented. This is milestone one of
+Status: implementation phase complete. The acceptance tests below run
+and the container's typed-token code paths are implemented. This is
+milestone one of
 [Seat scripts on the TSNomad kernel: architecture note (Source 9714)](https://navigator.novatori.us/r/source/9714):
 "Typed tokens in @tsnomad/di-container, so a binding's type is inferred
 rather than asserted."

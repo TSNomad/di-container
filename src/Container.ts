@@ -35,8 +35,8 @@ export class Container {
    *
    * While a singleton's factory is running, the entry for its key holds
    * the pending promise returned by that factory, not the resolved
-   * value yet. It is stored there synchronously, before that promise is
-   * awaited, so a concurrent `get` for the same key finds the pending
+   * value yet. `get` stores it there synchronously before awaiting it,
+   * so a concurrent `get` for the same key finds the pending
    * promise already cached instead of racing the factory. Once the
    * promise settles, the entry is replaced with the resolved instance.
    */
@@ -116,6 +116,9 @@ export class Container {
    * @param token - Identifier for the binding, string or typed
    * @returns Promise resolving to the instance
    * @throws BindingNotFoundError if the token's name is not bound
+   * If a singleton's factory rejects, the pending slot clears and the
+   * rejection propagates through the returned promise, so a later
+   * `get` retries the factory instead of replaying the failure.
    */
   get<T>(token: TypedToken<T>): Promise<T>;
   get<T>(token: Token): Promise<T>;
