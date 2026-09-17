@@ -1,7 +1,7 @@
 /**
  * Acceptance test: binding a typed token twice throws
  * DuplicateBindingError naming the token. Not implemented yet, see
- * docs/architecture/typed-tokens.md.
+ * the typed tokens architecture note.
  */
 
 import { test } from 'node:test';
@@ -18,6 +18,30 @@ test.skip('binding a typed token twice throws a DuplicateBindingError naming the
 
   assert.throws(
     () => container.bind(portToken, () => 4000),
+    (error: unknown) =>
+      error instanceof DuplicateBindingError && error.message.includes('Port')
+  );
+});
+
+test.skip('binding a typed token after a string token with the same name throws a DuplicateBindingError naming the token', () => {
+  const container = new Container();
+
+  container.bind('Port', () => 3000);
+
+  assert.throws(
+    () => container.bind(createToken<number>('Port'), () => 4000),
+    (error: unknown) =>
+      error instanceof DuplicateBindingError && error.message.includes('Port')
+  );
+});
+
+test.skip('binding a string token after a typed token with the same name throws a DuplicateBindingError naming the token', () => {
+  const container = new Container();
+
+  container.bind(createToken<number>('Port'), () => 3000);
+
+  assert.throws(
+    () => container.bind('Port', () => 4000),
     (error: unknown) =>
       error instanceof DuplicateBindingError && error.message.includes('Port')
   );

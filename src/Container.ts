@@ -36,13 +36,15 @@ export class Container {
    *
    * A typed token checks the factory against its own type at compile
    * time. Binding through a typed token is not implemented yet, see
-   * docs/architecture/typed-tokens.md. It is stubbed here so the
+   * the typed tokens architecture note. It is stubbed here so the
    * overload compiles and returns without touching container state.
    *
    * @param token - Identifier for this binding, string or typed
    * @param factory - Function that creates the instance
    * @param singleton - If true, instance is cached after first creation (default: true)
-   * @throws DuplicateBindingError if token already bound
+   * @throws DuplicateBindingError if a string token is already bound. The
+   *   typed-token path is a placeholder in this packet and does not yet
+   *   throw. It gains the same check when its implementation packet lands.
    */
   bind<T>(token: TypedToken<T>, factory: Factory<T>, singleton?: boolean): void;
   bind<T>(token: Token, factory: Factory<T>, singleton?: boolean): void;
@@ -65,8 +67,10 @@ export class Container {
    * Replaces an existing binding.
    * Useful for testing or reconfiguration.
    *
-   * Binding through a typed token is not implemented yet, see the
-   * note on `bind`.
+   * Rebinding through a typed token is a placeholder in this packet and
+   * does not yet touch container state, see the note on `bind`. It
+   * gains the same replace-and-clear-cache behavior when its
+   * implementation packet lands.
    *
    * @param token - Identifier for this binding, string or typed
    * @param factory - Function that creates the instance
@@ -99,7 +103,9 @@ export class Container {
    *
    * @param token - Identifier for the binding, string or typed
    * @returns Promise resolving to the instance
-   * @throws BindingNotFoundError if token is not bound
+   * @throws BindingNotFoundError if a string token is not bound. The
+   *   typed-token path is a placeholder in this packet and does not yet
+   *   throw. It gains the same check when its implementation packet lands.
    */
   get<T>(token: TypedToken<T>): Promise<T>;
   get<T>(token: Token): Promise<T>;
@@ -133,8 +139,9 @@ export class Container {
   /**
    * Checks if a token is bound in the container.
    *
-   * Checking a typed token is not implemented yet, see the note on
-   * `bind`. It is stubbed here to always report unbound.
+   * Checking a typed token is a placeholder in this packet, see the
+   * note on `bind`. It is stubbed here to always report unbound. It
+   * gains the same lookup when its implementation packet lands.
    *
    * @param token - Identifier to check, string or typed
    * @returns True if the token has a binding

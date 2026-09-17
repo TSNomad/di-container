@@ -11,10 +11,10 @@ rather than asserted."
 
 Today a binding lives under a plain string token, `'Logger'`, and
 `container.get<T>('Logger')` hands back whatever `T` the caller writes at
-the call site. Nothing checks that `T` against what the factory actually
-returns. The generic argument is a cast, not a check. A factory that
-returns the wrong shape compiles and fails only when something later tries
-to use the value.
+the call site. No check compares that `T` with what the factory returns.
+The generic argument is a cast, not a check. A factory that returns the
+wrong shape compiles and fails only when something later tries to use the
+value.
 
 ## The shape of the change
 
@@ -80,9 +80,9 @@ are reused as they stand.
 
 ## Relationships and names
 
-`createToken` lives in its own file, `src/createToken.ts`, next to
-`Container.ts`, `types.ts`, and `errors.ts`, matching the one-file-per-role
-layout this package already uses. `TypedToken` and `AnyToken` join `Token`,
+`createToken` lives in its own file, [createToken.ts](../../src/createToken.ts),
+next to `Container.ts`, `types.ts`, and `errors.ts`, matching the
+one-file-per-role layout this package already uses. `TypedToken` and `AnyToken` join `Token`,
 `Factory`, and `Binding` in `types.ts`, since they are types the whole
 package shares, not behavior that belongs to one class.
 
@@ -122,23 +122,27 @@ below already holds today, before any implementer touches the container.
 Five files live under `test/`, one node's test runner already discovers
 by folder convention:
 
-- `test/typed-token-bind-resolve.test.ts`, a typed token binds and
-  resolves with the inferred type.
-- `test/typed-token-string-compat.test.ts`, a string token still works.
-- `test/typed-token-duplicate.test.ts`, binding a typed token twice
-  throws `DuplicateBindingError` naming the token.
-- `test/typed-token-async-singleton.test.ts`, async factories and
-  singleton caching hold for typed tokens.
-- `test/typed-token-type-safety.ts`, a compile-only check with no
-  `test()` call. `npm run typecheck` covers it, using a
-  `// @ts-expect-error` line to prove a factory whose return type does
-  not match the token's type fails to compile.
+- [typed-token-bind-resolve.test.ts](../../test/typed-token-bind-resolve.test.ts),
+  a typed token binds and resolves with the inferred type.
+- [typed-token-string-compat.test.ts](../../test/typed-token-string-compat.test.ts),
+  a string token still works.
+- [typed-token-duplicate.test.ts](../../test/typed-token-duplicate.test.ts),
+  binding a typed token twice throws `DuplicateBindingError` naming the
+  token, in both cross-type orders.
+- [typed-token-async-singleton.test.ts](../../test/typed-token-async-singleton.test.ts),
+  async factories and singleton caching hold for typed tokens, including
+  under concurrent gets.
+- [typed-token-type-safety.ts](../../test/typed-token-type-safety.ts), a
+  compile-only check with no `test()` call. `npm run typecheck` covers it,
+  using a `// @ts-expect-error` line to prove a factory whose return type
+  does not match the token's type fails to compile.
 
-The first four are marked `test.skip`, the language's own incomplete
-marker for node's test runner. They stay skipped, not failing, so
-`npm test` is green on the committed state. The fifth carries no marker,
-because what it checks, the typed overload's parameter types, is already
-finished, not deferred.
+Every runtime test in the first four files is marked `test.skip`, the
+language's own incomplete marker for node's test runner, seven tests in
+all. They stay skipped, not failing, so `npm test` is green on the
+committed state. The fifth file carries no marker at all, because what
+it checks, the typed overload's parameter types, is already finished,
+not deferred.
 
 `npm run typecheck` builds the package first, then type-checks `src` and
 `test` together, so the compile-only file's `@ts-expect-error` is
@@ -232,6 +236,37 @@ Failed because the second bind silently replaced the first instead of
 throwing, the exact property this test guards. Scratch implementation
 discarded, `Container.ts` restored, marker restored.
 
+### binding a typed token after a string token with the same name throws a DuplicateBindingError naming the token, and the reverse order
+
+Two tests, one for each order a string and a typed token with the name
+`'Port'` can collide in. Implemented `bind` with the same key
+normalization as above:
+
+```
+✔ binding a typed token after a string token with the same name throws a DuplicateBindingError naming the token (0.333785ms)
+✔ binding a string token after a typed token with the same name throws a DuplicateBindingError naming the token (0.122477ms)
+ℹ pass 2
+ℹ fail 0
+```
+
+Deleted the behavior the same way, by removing the duplicate check:
+
+```
+✖ binding a typed token after a string token with the same name throws a DuplicateBindingError naming the token (0.501764ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at test/typed-token-duplicate.test.ts:31:10
+✖ binding a string token after a typed token with the same name throws a DuplicateBindingError naming the token (0.130667ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at test/typed-token-duplicate.test.ts:43:10
+```
+
+Failed in both orders because the second bind silently replaced the
+first instead of throwing, the exact property these tests guard, which
+matters because a typed token and a string token with the same name
+share one binding and one of them arriving second must still be caught.
+Scratch implementation discarded, `Container.ts` restored, markers
+restored.
+
 ### async factories and singleton caching hold for typed tokens
 
 Implemented `bind` and `get` with the same key normalization as the first
@@ -256,6 +291,39 @@ Deleted the behavior by removing the singleton cache read and write from
 Failed because the factory ran twice instead of once, the exact property
 this test guards. Scratch implementation discarded, `Container.ts`
 restored, marker restored.
+
+### an async singleton factory runs once under concurrent gets
+
+This test fires `Promise.all([container.get(token), container.get(token)])`
+against a singleton binding. The order of proof runs the other way round,
+because the obvious minimal fix does not actually satisfy it. First,
+implemented `bind` and `get` with the same check-then-act key
+normalization used above, the pattern already proven for the sequential
+version of this test:
+
+```
+✖ an async singleton factory runs once under concurrent gets (0.639937ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  2 !== 1
+      at test/typed-token-async-singleton.test.ts:57:10
+```
+
+Failed because both concurrent calls see no cached instance before
+either one finishes, so both call the factory, the exact race this test
+guards against. Then implemented a claim-before-act cache: `get` stores
+the pending promise from `binding.factory()` synchronously, before
+awaiting it, so a concurrent call finds that promise already cached
+instead of racing the factory:
+
+```
+✔ an async singleton factory runs once under concurrent gets (0.203593ms)
+ℹ pass 1
+ℹ fail 0
+```
+
+Passed once the cache was claimed before the await instead of after it.
+Scratch implementation discarded, `Container.ts` restored, marker
+restored.
 
 ### a wrong factory type fails to compile
 
