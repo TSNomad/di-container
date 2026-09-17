@@ -13,7 +13,7 @@ interface Logger {
   log(message: string): void;
 }
 
-test.skip('a typed token binds and resolves with the inferred type', async () => {
+test('a typed token binds and resolves with the inferred type', async () => {
   const loggerToken = createToken<Logger>('Logger');
   const container = new Container();
   const seen: string[] = [];

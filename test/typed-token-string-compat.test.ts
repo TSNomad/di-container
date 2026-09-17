@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Container } from '../dist/Container.js';
 
-test.skip('a string token still works', async () => {
+test('a string token still works', async () => {
   const container = new Container();
 
   container.bind('Greeting', () => 'hello');
