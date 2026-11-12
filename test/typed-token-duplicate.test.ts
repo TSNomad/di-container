@@ -1,7 +1,7 @@
 /**
  * Acceptance test: binding a typed token twice throws
- * DuplicateBindingError naming the token. Not implemented yet, see
- * the typed tokens architecture note.
+ * DuplicateBindingError naming the token. See the typed tokens
+ * architecture note.
  */
 
 import { test } from 'node:test';
