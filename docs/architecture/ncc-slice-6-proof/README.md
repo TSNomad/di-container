@@ -4,8 +4,11 @@ This folder holds the evidence that each acceptance test is a contract,
 as the Proof section of `../ncc-slice-6.md` describes.
 
 - `mutate.py` runs the suite once per mutation in `mutations.py` and
-  writes `mutations.log`. Each entry names the guard it breaks and the
-  tests that went red.
+  writes `mutations.log`. A mutation counts as caught when the suite
+  exits non-zero, and each entry names the guard it breaks and lists the
+  tests that went red. It runs `node --test --test-timeout=20000` rather
+  than `npm test`, so a mutation that makes a test hang fails that test
+  instead of stalling the run.
 - `types-mutate.py` does the same for the compile-only type test, from
   `type-mutations.py` into `type-mutations.log`, and reports which
   `@ts-expect-error` lines each loosening left unused.

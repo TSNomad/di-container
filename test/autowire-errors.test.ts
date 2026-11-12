@@ -129,7 +129,9 @@ test.skip('a failure two levels down is wrapped once per level', async () => {
         inner instanceof AutowireError &&
         inner.concrete === 'Transport' &&
         inner.dependency === 'Mailer' &&
-        inner.cause instanceof BindingNotFoundError
+        inner.cause instanceof BindingNotFoundError &&
+        error.message ===
+          "Could not resolve Transport for Newsletter: Could not resolve Mailer for Transport: Token 'Mailer' is not bound. Available: none"
       );
     }
   );
@@ -339,4 +341,19 @@ test.skip('concurrent gets of two classes that share a slow dependency with no l
 
   assert.equal(Shared.built, 1, 'the shared dependency was built once');
   assert.equal(first.shared, second.shared);
+});
+
+test('a dependency error ends its message with the message of its cause, and the other reasons stand alone', () => {
+  const inner = new AutowireError('Transport', 'dependency', 'Mailer', {
+    cause: new BindingNotFoundError('Mailer', []),
+  });
+  assert.equal(inner.message, "Could not resolve Mailer for Transport: Token 'Mailer' is not bound. Available: none");
+  const outer = new AutowireError('Newsletter', 'dependency', 'Transport', { cause: inner });
+  assert.equal(outer.message, `Could not resolve Transport for Newsletter: ${inner.message}`);
+  assert.equal(new AutowireError('Clock', 'dependency', 'Missing').message, 'Could not resolve Missing for Clock.');
+  assert.equal(
+    new AutowireError('Clock', 'no-inject').message,
+    'Clock takes constructor parameters but declares no static inject list.'
+  );
+  assert.equal(new AutowireError('Clock', 'short-inject').message, "Clock's static inject list is shorter than its constructor.");
 });

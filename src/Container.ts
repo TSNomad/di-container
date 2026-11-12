@@ -191,9 +191,11 @@ export class Container implements InstanceProvider, HasBindings {
    * would use, so rebinding through a typed token replaces a binding
    * made under a string token of the same name, and the reverse.
    *
-   * A class abstract is keyed by the class, as in `bind`. Its new
-   * binding is a factory that receives an InstanceProvider, as a
-   * `bindFactory` factory does, and its result is cached. Rebinding a
+   * The factory receives an InstanceProvider, as a `bindFactory`
+   * factory does, so a loop through it rejects with
+   * CircularDependencyError. A factory that takes no argument, as 0.1
+   * factories do, still fits. A class abstract is keyed by the class,
+   * as in `bind`, and its result is always cached. Rebinding a
    * class that `get` already autowired replaces the autowired instance.
    *
    * Only the named key changes. When that key is one abstract of a
@@ -208,14 +210,17 @@ export class Container implements InstanceProvider, HasBindings {
    *   (default: true). Tokens only.
    */
   rebind<T>(abstract: AbstractConstructor<T>, factory: ContainerFactory<NoInfer<T>>): void;
-  rebind<T>(token: TypedToken<T>, factory: Factory<T>, singleton?: boolean): void;
-  rebind<T>(token: Token, factory: Factory<T>, singleton?: boolean): void;
-  rebind<T>(token: AnyToken<T> | AbstractConstructor<T>, factory: Factory<T> | ContainerFactory<T>, singleton = true): void {
+  rebind<T>(token: TypedToken<T>, factory: ContainerFactory<T>, singleton?: boolean): void;
+  rebind<T>(token: Token, factory: ContainerFactory<T>, singleton?: boolean): void;
+  rebind<T>(token: AnyToken<T> | AbstractConstructor<T>, factory: ContainerFactory<T>, singleton = true): void {
     if (typeof token === 'function') {
       // Stub: class abstracts are not implemented yet. See
       // docs/architecture/ncc-slice-6.md.
       return;
     }
+
+    // Stub: a token rebind factory does not get its InstanceProvider
+    // yet. See docs/architecture/ncc-slice-6.md.
 
     const key = Container.keyOf(token);
 

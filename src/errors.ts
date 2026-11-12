@@ -66,9 +66,9 @@ export class DuplicateBindingError extends DiException {
   private static describe(token: string, reason: DuplicateBindingReason): string {
     switch (reason) {
       case 'repeated':
-        return `Token '${token}' is named twice in one bind() call.`;
+        return `Abstract '${token}' is named twice in one bind() call.`;
       case 'autowired':
-        return `Token '${token}' was already autowired by get(). Bind it before the first get().`;
+        return `Abstract '${token}' was already autowired by get(). Bind it before the first get().`;
       default:
         return `Token '${token}' is already bound. Use rebind() to replace.`;
     }
@@ -89,7 +89,8 @@ export type AutowireReason = 'no-inject' | 'short-inject' | 'dependency' | 'circ
 /**
  * Thrown when the container cannot build a class. The message is built
  * from the fields. It always names the class, and names the dependency
- * when one failed.
+ * when one failed, followed by the message of the error that caused it,
+ * so the whole chain reads in one line.
  */
 export class AutowireError extends DiException {
   constructor(
@@ -101,18 +102,19 @@ export class AutowireError extends DiException {
     public readonly dependency?: string,
     options?: { cause?: unknown }
   ) {
-    super(AutowireError.describe(concrete, reason, dependency), options);
+    super(AutowireError.describe(concrete, reason, dependency, options?.cause), options);
     this.name = 'AutowireError';
   }
 
-  private static describe(concrete: string, reason: AutowireReason, dependency?: string): string {
+  private static describe(concrete: string, reason: AutowireReason, dependency?: string, cause?: unknown): string {
     switch (reason) {
       case 'no-inject':
         return `${concrete} takes constructor parameters but declares no static inject list.`;
       case 'short-inject':
         return `${concrete}'s static inject list is shorter than its constructor.`;
       case 'dependency':
-        return `Could not resolve ${dependency ?? 'an inject entry'} for ${concrete}.`;
+        return `Could not resolve ${dependency ?? 'an inject entry'} for ${concrete}`
+          + (cause instanceof Error ? `: ${cause.message}` : '.');
       default:
         return `${concrete} is part of a dependency loop.`;
     }

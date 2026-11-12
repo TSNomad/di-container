@@ -65,12 +65,17 @@ stays as a deprecated alias of the same class. Two errors are new:
 and its subclass `CircularDependencyError` (field `path`).
 `DuplicateBindingError` gains a `reason` field. Every error builds its
 message from its fields, as the 0.1 errors already do, so a message
-reads the same wherever it is thrown.
+reads the same wherever it is thrown. A `'dependency'` message ends with
+its cause's message, so a chain two levels deep reads in one line:
+`Could not resolve Transport for Newsletter: Could not resolve Mailer for
+Transport: Token 'Mailer' is not bound. Available: none`.
 
 `rebind` learns class abstracts. `rebind(Store, factory)` replaces the
 binding of `Store` with a factory that receives an `InstanceProvider`,
 the same shape `bindFactory` takes. It is how a test swaps a class
-abstract for a double, since `bind` refuses a second binding.
+abstract for a double, since `bind` refuses a second binding. A token
+`rebind` takes the same factory shape and passes the provider too, so a
+loop through it is caught. A 0.1 factory with no argument still fits.
 
 The 0.1 surface stays as it is: `bind(token, factory, singleton)`,
 `rebind` of tokens, `has`, `getTokens`, string and typed tokens, and the
@@ -92,7 +97,9 @@ Bindings:
   `Store`, because JavaScript can construct a TypeScript abstract class,
   and later gets would keep serving it. An autowire counts from the
   moment its `get` starts, and a class autowired as another class's
-  `inject` entry counts too.
+  `inject` entry counts too. An autowire that fails leaves no mark,
+  whether the class was requested or reached as an entry, so the class
+  can be bound after the failure.
 - `get(Impl)` after `bind(Impl, Contract)` builds a separate `Impl`,
   because only the abstracts named in `bind` share an instance. This is
   PHPNomad's behavior. Name `Impl` in the call to share it.
@@ -118,8 +125,12 @@ Caching and failure:
 - A failure while resolving an `inject` entry becomes an `AutowireError`
   naming the class being built and the entry, with the failure as
   `cause` and `reason` `'dependency'`. Two levels down, the error is
-  wrapped once per level. A missing `inject` list gives `'no-inject'`
-  and a short one `'short-inject'`.
+  wrapped once per level, and each message ends with the message of the
+  level below. A missing `inject` list gives `'no-inject'` and a short
+  one `'short-inject'`.
+- A constructor whose parameters all have defaults reports no
+  parameters to JavaScript, so a class like that needs no `inject` list.
+  Autowiring builds it with its defaults, as `new Counter()` would.
 
 Loops:
 
@@ -174,8 +185,15 @@ Loops:
   test, is normal TypeScript, and the compile-time check already ties a
   concrete to its abstracts.
 - A parameter with a default value is not filled from its default when
-  the entry cannot resolve. The `inject` list is explicit, so a missing
-  binding is a wiring mistake.
+  its `inject` entry cannot resolve. The list is explicit, so a missing
+  binding is a wiring mistake. A class with no list whose parameters all
+  have defaults builds with those defaults.
+- PHPNomad keeps the container interfaces in `phpnomad/di` and the
+  container in `phpnomad/di-container`. Here `InstanceProvider`,
+  `HasBindings` and `CanSetContainer` live in this package beside the
+  container, because TS Nomad's packages already depend on this one for
+  tokens, and a second package would add an install for three
+  interfaces.
 - PHPNomad's `HasSettableContainer` trait has no counterpart here,
   because TypeScript has no traits and a base class would take the one
   `extends` a class has. A class implements `CanSetContainer` itself.
@@ -191,12 +209,13 @@ Loops:
 |---|---|---|
 | `src/types.ts` | `Constructor`, `AbstractConstructor`, `Abstract`, `AnyAbstract`, `InjectEntry`, `InjectList`, `Injectable`, `AbstractType`, `BindableAbstracts`, `ContainerFactory` | final |
 | `src/InstanceProvider.ts`, `src/HasBindings.ts`, `src/CanSetContainer.ts` | PHPNomad interfaces and their tokens | final |
-| `src/errors.ts` | `DiException`, `ContainerError` alias, `AutowireError`, `CircularDependencyError` | final, data carriers with no logic |
-| `src/Container.ts` | the class path of `bind`, `bindFactory`, `get`, `has` | stubbed |
+| `src/errors.ts` | `DiException`, `ContainerError` alias, `DuplicateBindingError` with its reasons, `AutowireError`, `CircularDependencyError` | final, each builds its message from its fields |
+| `src/Container.ts` | the class path of `bind`, `bindFactory`, `rebind`, `get`, `has`, and the provider a token `rebind` passes | stubbed |
 | `scripts/consumer-check.sh` | builds and tests consumers against exact commits | final |
 
 The stubs never throw. `bind` and `bindFactory` return `this` without
-storing, `rebind` of a class stores nothing, `get` of a class returns
+storing, `rebind` of a class stores nothing, a token `rebind` stores a
+factory that is called with no provider, `get` of a class returns
 `undefined`, and `has` of a class returns `false`. `undefined` from
 `get` is a value the contract never returns. It is the one tolerated
 placeholder, because any instance would be a guess. The string and typed
@@ -207,15 +226,15 @@ so the implementer passes fields, never wording.
 
 | File | Tests | What it proves |
 |---|---|---|
-| `test/bind-concrete.test.ts` | 18 | `bind` to tokens and classes, the shared instance, order of `inject` arguments, chaining, `has`, the duplicate rules and their reasons, identity keys, string entries, 0.1 bindings as entries, a constructor error passing through, a failed shared build, `rebind` during a shared build that succeeds or fails, `rebind` of a class, refusing an autowired abstract, also while in flight and as an entry |
+| `test/bind-concrete.test.ts` | 20 | `bind` to tokens and classes, the shared instance, order of `inject` arguments, chaining, `has`, the duplicate rules, their reasons and messages, identity keys, string entries, 0.1 bindings as entries, a constructor error passing through, a failed shared build, `rebind` during a shared build that succeeds or fails, `rebind` of a class beside a sibling abstract, refusing an autowired abstract, also while in flight and as an entry, and binding a class after its autowire failed |
 | `test/autowire-unbound.test.ts` | 6 | autowiring an unbound class, caching it, the separate instance for a concrete bound elsewhere, `has` staying false, retry after a failed build |
-| `test/autowire-errors.test.ts` | 14 | each autowiring error and its reason: missing and short `inject` lists, an inherited constructor, an inherited `inject` list that works, an unbound entry, wrapping two levels down, a failing dependency constructor, retry after a failed dependency, loops, concurrent loops, a shared dependency that is no loop, loops through a token, an unbound typed token |
-| `test/bind-factory.test.ts` | 15 | `bindFactory`: result, provider argument, one run under concurrency, one run for concurrent waiters on a failure, class abstracts, retry after rejection, chaining, the duplicate rules in every order, loops through factories, a shared dependency that is no loop, a kept provider, `rebind` during a run |
+| `test/autowire-errors.test.ts` | 15 | each autowiring error, its reason and its message: missing and short `inject` lists, an inherited constructor, an inherited `inject` list that works, an unbound entry, wrapping two levels down with the whole chain in the message, a failing dependency constructor, retry after a failed dependency, loops, concurrent loops, a shared dependency that is no loop, loops through a token, an unbound typed token |
+| `test/bind-factory.test.ts` | 16 | `bindFactory`: result, provider argument, one run under concurrency, one run for concurrent waiters on a failure, class abstracts, retry after rejection, chaining, the duplicate rules in every order, loops through factories, a shared dependency that is no loop, a kept provider, `rebind` during a run, the provider a token `rebind` passes |
 | `test/autowire-type-safety.ts` | 14 rejected calls | compile-only: `inject` lists checked against constructors, concretes checked against abstracts, factory return types for `bindFactory` and a class `rebind`, inferred `get` types, the same checks through the interfaces |
 
-That is 53 runtime tests. One of them, the unbound typed token, checks
-code that is already final, so it runs now. The other 52 are skipped
-until the packet lands. `npm test` builds and runs every file.
+That is 57 runtime tests. Three of them check code that is already
+final, so they run now: the unbound typed token and the two message
+tests. The other 54 are skipped until the packet lands. `npm test` builds and runs every file.
 `npm run typecheck` checks the compile-only file. The runtime tests
 import `dist`, as the typed-token tests already do.
 
@@ -224,11 +243,11 @@ import `dist`, as the typed-token tests already do.
 The record is in `docs/architecture/ncc-slice-6-proof/`: the two
 harnesses, the mutation lists and their logs.
 
-A scratch implementation in a separate clone passed all 53 runtime
+A scratch implementation in a separate clone passed all 57 runtime
 tests and the 11 earlier typed-token tests. That clone is never
 committed. Each guard then got its own mutation, and the harness scored
-72 of them. Each built cleanly and turned the suite red at the expected
-tests. The run started with three controls: a break it must catch, a
+80 of them. Each built cleanly and turned the suite red, and the log
+lists the tests each one failed. The run started with three controls: a break it must catch, a
 comment it must not, and a syntax error it must refuse to score. The
 harness refuses a mutation whose build fails, so a compile break never
 counts as a kill.
@@ -258,31 +277,48 @@ list names private repositories that do not belong in this public one.
 In commit mode it points every `@tsnomad/di-container` and
 `@tsnomad/event` at exact commits through package manager overrides.
 After install it checks that each package has at least one installed
-copy, that every copy is 0.2.0, and that every lockfile entry for either
-package resolves to its pinned commit. It records each consumer's test
-exit code, how many tests ran, and each failing test with the first line
-of its error.
+copy, that every copy is 0.2.0 and holds the same `src` files as its
+pinned commit, wherever the copy sits, and that every lockfile entry
+for either package resolves to its pinned commit. A file comparison
+covers copies that a lockfile does not describe, such as one inside a
+`file:` dependency. Each run gets its own folder, named after the mode
+and the time, and records the commits it pinned. For each consumer it
+records the test exit code, how many tests ran, each failing test with
+the first line of its error, and vitest's unhandled errors. A malformed
+row in the consumer list fails.
 
-Compare mode applies the pass rule. It takes two baseline runs and two
-check runs, on the same consumer commits, and refuses any folder that is
-missing a consumer, ran another commit, did not build, or is the wrong
-kind of run. A consumer passes when all of these hold:
+Compare mode applies the pass rule. It takes the consumer list, two or
+more baseline runs and two or more check runs, all different folders.
+It refuses any folder that is missing a listed consumer, ran another
+commit, did not build, is the wrong kind of run, or pinned other commits
+than the first check run. A consumer passes when all of these hold:
 
-- No test fails in either check run that did not fail in a baseline. A
+- No baseline failure is a timeout. A timeout hides the reason a test
+  failed, so a row whose baseline timed out is rerun on a quieter
+  machine before it can pass.
+- No test fails in any check run that did not fail in a baseline. A
   failure in one check run counts, because a regression that fails only
   some of the time is still a regression.
-- A test that failed in both baselines and fails again does so with the
-  same first error line. Two consumers already fail tests on main, some
-  of them through `Container.get` and `EventStrategy.broadcast`, so a
-  failure that changes its reason counts as new.
-- No check run exits non-zero without naming a failing test, unless both
-  baselines did the same.
-- No check run ran fewer tests than the smaller baseline.
+- A test that failed in every baseline and fails again does so with the
+  same first error line, and that line is known. Two consumers already
+  fail tests on main, some of them through `Container.get` and
+  `EventStrategy.broadcast`, so a failure that changes its reason counts
+  as new. vitest prints one error under a group of failing tests, and
+  each test in the group gets that line.
+- No check run exits non-zero without naming a failing test, unless
+  every baseline did the same.
+- No check run ran fewer tests than the smallest baseline.
+- No check run has more unhandled errors than the largest baseline, or
+  an unhandled error line no baseline had.
 
-A test that failed in one baseline and not the other is listed as flaky
-by name, and only those tests are excused. A consumer whose baseline runs
-no tests is marked build-only. Run everything on a quiet machine, one
-consumer at a time, because timeouts under load look like failures.
+A test that failed in some baselines and not others is listed as flaky
+by name, and only those tests are excused. A consumer whose baseline
+runs no tests is marked build-only. The report also calls a consumer
+build-only when its tests never load either package. That consumer's
+test command runs its built binary once, so its wiring runs on the new
+code. Run everything on a quiet
+machine, one consumer at a time, because timeouts under load look like
+failures.
 
 A consumer that stops compiling because of the event package's 0.2.0
 breaks gets a fix patch. The patch applies only the fixes listed in the

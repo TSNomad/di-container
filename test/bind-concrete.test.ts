@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Container } from '../dist/Container.js';
 import { createToken } from '../dist/createToken.js';
-import { DuplicateBindingError } from '../dist/errors.js';
+import { AutowireError, DuplicateBindingError } from '../dist/errors.js';
 
 interface Logger {
   log(message: string): void;
@@ -321,9 +321,10 @@ test.skip('rebind replaces a class abstract and leaves the other abstracts of it
   }
   const container = new Container();
   container.bind(MemoryLogger, Logger, Audit);
-  container.bind(MemoryStore, Store);
+  container.bind(MemoryStore, Store, 'Reader');
   const audit = await container.get(Audit);
   const before = await container.get(Store);
+  assert.equal(await container.get('Reader'), before, 'Store and Reader share one instance before the rebind');
 
   container.rebind(Store, () => new FixedStore());
   const after = await container.get(Store);
@@ -332,6 +333,7 @@ test.skip('rebind replaces a class abstract and leaves the other abstracts of it
   assert.ok(after instanceof FixedStore, 'the class abstract now resolves to the rebound factory');
   assert.equal(await container.get(Store), after, 'the rebound result is cached');
   assert.equal(await container.get(Audit), audit);
+  assert.equal(await container.get('Reader'), before, 'the sibling abstract of the same bind call keeps the shared instance');
   assert.equal(container.has(Store), true);
 
   class Counter {
@@ -411,5 +413,50 @@ test.skip('bind refuses a class whose autowired build is still in flight, and on
     () => nested.bind(MemoryStore, Store),
     (error: unknown) => error instanceof DuplicateBindingError && error.reason === 'autowired',
     'a class autowired as an inject entry counts'
+  );
+});
+
+test.skip('a failed autowire leaves no mark, so the class can be bound afterwards, requested or reached as an inject entry', async () => {
+  class Clock {
+    static readonly inject = ['Missing'] as const;
+    constructor(missing: unknown) {
+      void missing;
+    }
+    now(): number {
+      return 1;
+    }
+  }
+  class FakeClock extends Clock {
+    constructor() {
+      super(undefined);
+    }
+    override now(): number {
+      return 2;
+    }
+  }
+  class Scheduler {
+    static readonly inject = [Clock] as const;
+    readonly clock: Clock;
+    constructor(clock: Clock) {
+      this.clock = clock;
+    }
+  }
+  const requested = new Container();
+  await assert.rejects(() => requested.get(Clock), AutowireError);
+  assert.doesNotThrow(() => requested.bindFactory(Clock, () => new FakeClock()), 'a failed requested autowire left no mark');
+  assert.equal((await requested.get(Clock)).now(), 2);
+
+  const nested = new Container();
+  await assert.rejects(() => nested.get(Scheduler), AutowireError);
+  assert.doesNotThrow(() => nested.bindFactory(Clock, () => new FakeClock()), 'a failed inject-entry autowire left no mark');
+  assert.equal((await nested.get(Scheduler)).clock.now(), 2, 'Scheduler builds on the new binding');
+});
+
+test('each duplicate reason builds its own advice, and the 0.1 text is unchanged', () => {
+  assert.equal(new DuplicateBindingError('Logger').message, "Token 'Logger' is already bound. Use rebind() to replace.");
+  assert.equal(new DuplicateBindingError('Store', 'repeated').message, "Abstract 'Store' is named twice in one bind() call.");
+  assert.equal(
+    new DuplicateBindingError('Clock', 'autowired').message,
+    "Abstract 'Clock' was already autowired by get(). Bind it before the first get()."
   );
 });

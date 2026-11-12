@@ -294,3 +294,16 @@ test.skip('a rebind while a bindFactory run is in flight stays in effect when th
   assert.equal((await inFlight).connection.id, 1);
   assert.equal((await container.get<Pool>('Pool')).connection.id, 2, 'the rebind stays in effect');
 });
+
+test.skip('a token rebind factory receives a provider, as a bindFactory factory does, and a loop through it rejects', { timeout: 2000 }, async () => {
+  const container = new Container();
+  container.bind('Config', () => ({ region: 'eu' }));
+  container.rebind('Region', async (provider: InstanceProvider) => (await provider.get<{ region: string }>('Config')).region);
+  assert.equal(await container.get<string>('Region'), 'eu');
+
+  container.rebind('Echo', (provider: InstanceProvider) => provider.get('Echo'));
+  await assert.rejects(
+    () => container.get('Echo'),
+    (error: unknown) => error instanceof CircularDependencyError && error.path.join(' -> ') === 'Echo -> Echo'
+  );
+});
