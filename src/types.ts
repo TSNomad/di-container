@@ -135,7 +135,9 @@ export type BindableAbstracts<T, A extends readonly unknown[]> = {
 };
 
 /**
- * A factory registered with `bindFactory`. It receives the container,
- * so it can resolve what it needs, and it may be sync or async.
+ * A factory registered with `bindFactory`. It receives an
+ * InstanceProvider that resolves through the container and tracks the
+ * resolution in progress, so it can get what it needs and a loop is
+ * caught. It may be sync or async.
  */
 export type ContainerFactory<T> = (container: InstanceProvider) => T | Promise<T>;

@@ -240,3 +240,44 @@ test.skip('an unbound typed token still fails with BindingNotFoundError, a DiExc
     (error: unknown) => error instanceof BindingNotFoundError && error instanceof DiException
   );
 });
+
+test.skip('a subclass that inherits a constructor with parameters and declares no inject list fails, naming the subclass', async () => {
+  class Base {
+    readonly mailer: unknown;
+    constructor(mailer: unknown) {
+      this.mailer = mailer;
+    }
+  }
+  class Derived extends Base {}
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Derived),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Derived'
+  );
+});
+
+test.skip('a dependency that failed once is not cached, so a later get of the class that needs it succeeds', async () => {
+  let attempts = 0;
+  const container = new Container();
+  container.bindFactory(Mailer, () => {
+    attempts += 1;
+    if (attempts === 1) {
+      throw new Error('mail server down');
+    }
+    return { send: () => {} };
+  });
+  class Notifier {
+    static readonly inject = [Mailer] as const;
+    readonly mailer: Mailer;
+    constructor(mailer: Mailer) {
+      this.mailer = mailer;
+    }
+  }
+
+  await assert.rejects(() => container.get(Notifier), AutowireError);
+  const notifier = await container.get(Notifier);
+
+  assert.equal(attempts, 2);
+  assert.ok(notifier instanceof Notifier);
+});

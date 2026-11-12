@@ -210,3 +210,90 @@ test.skip('a constructor error from the requested class passes through unchanged
   assert.equal(second.attempt, 2);
   assert.equal(await container.get(Flaky), second, 'the successful build is cached');
 });
+
+test.skip('naming the same abstract twice in one bind call throws and binds nothing', () => {
+  const container = new Container();
+
+  assert.throws(
+    () => container.bind(MemoryLogger, Logger, Audit, Logger),
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Logger'
+  );
+  assert.equal(container.has(Logger), false);
+  assert.equal(container.has(Audit), false);
+});
+
+test.skip('a failed build of a shared instance is not cached under any of its abstracts', async () => {
+  let attempts = 0;
+  class FlakyLogger implements Logger, Audit {
+    constructor() {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new RangeError('first build fails');
+      }
+    }
+    log(): void {}
+    record(): void {}
+  }
+  const container = new Container();
+  container.bind(FlakyLogger, Logger, Audit);
+
+  await assert.rejects(() => container.get(Logger), RangeError);
+  const audit = await container.get(Audit);
+  const logger = await container.get(Logger);
+
+  assert.equal(attempts, 2, 'the second abstract built again instead of replaying the failure');
+  assert.equal(logger, audit, 'the successful build is shared by both abstracts');
+});
+
+test.skip('a rebind of one abstract while its shared build is in flight is not overwritten by that build', async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  class SlowLogger implements Logger, Audit {
+    static readonly inject = ['Gate'] as const;
+    constructor(gateDone: unknown) {
+      void gateDone;
+    }
+    log(): void {}
+    record(): void {}
+  }
+  const container = new Container();
+  container.bind('Gate', () => gate);
+  container.bind(SlowLogger, Logger, Audit);
+  const replacement: Logger = { log: () => {} };
+
+  const inFlight = container.get(Logger);
+  container.rebind(Logger, () => replacement);
+  release();
+  const first = await inFlight;
+
+  assert.ok(first instanceof SlowLogger, 'the get that started before the rebind finishes with the old binding');
+  assert.equal(await container.get(Logger), replacement, 'the rebind stays in effect');
+  assert.ok((await container.get(Audit)) instanceof SlowLogger, 'the other abstract keeps the shared instance');
+});
+
+test.skip('bind and bindFactory refuse an abstract that get has already autowired', async () => {
+  class SystemClock {
+    now(): number {
+      return 1;
+    }
+  }
+  class FakeClock extends SystemClock {
+    override now(): number {
+      return 2;
+    }
+  }
+  const container = new Container();
+  await container.get(SystemClock);
+
+  assert.throws(
+    () => container.bind(FakeClock, SystemClock),
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'SystemClock'
+  );
+  assert.throws(
+    () => container.bindFactory(SystemClock, () => new FakeClock()),
+    (error: unknown) => error instanceof DuplicateBindingError
+  );
+  assert.equal((await container.get(SystemClock)).now(), 1, 'the autowired instance is still the one served');
+});

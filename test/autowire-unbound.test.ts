@@ -88,3 +88,24 @@ test.skip('an autowired class is not reported by has', async () => {
 
   assert.equal(container.has(Plain), false);
 });
+
+test.skip('a failed autowired build leaves nothing cached, so a later get builds again', async () => {
+  let attempts = 0;
+  class Flaky {
+    readonly attempt: number;
+    constructor() {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new RangeError('first build fails');
+      }
+      this.attempt = attempts;
+    }
+  }
+  const container = new Container();
+
+  await assert.rejects(() => container.get(Flaky), RangeError);
+  const second = await container.get(Flaky);
+
+  assert.equal(second.attempt, 2);
+  assert.equal(await container.get(Flaky), second, 'the successful build is cached');
+});

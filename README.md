@@ -20,7 +20,7 @@ npm install @tsnomad/di-container
 import { Container, createToken } from '@tsnomad/di-container';
 
 interface Logger { log(message: string): void }
-const Logger = createToken<Logger>('app/Logger');
+const Logger = createToken<Logger>('Logger');
 
 class Greeter {
   static readonly inject = [Logger] as const;
@@ -39,13 +39,8 @@ The 0.1 form still works: `container.bind('Logger', () => new ConsoleLogger())`.
 
 ## Where this differs from PHPNomad
 
-- `get` returns a promise, because a factory may be async.
-- Autowiring reads a static `inject` list, checked against the
-  constructor at compile time, because TypeScript erases parameter types.
-- An interface is a typed token with the interface's name, because
-  TypeScript erases interfaces.
-- Binding an abstract twice throws. `rebind` replaces a binding.
-- The container does not check the resolved instance with `instanceof`.
+The architecture note, `docs/architecture/ncc-slice-6.md`, keeps the
+list of differences and the reason for each.
 
 ## Extracted 2026-09-17
 

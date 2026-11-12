@@ -23,12 +23,8 @@
  * The 0.1 form, `bind(token, factory, singleton)`, still works for
  * string and typed tokens.
  *
- * Where this differs from PHPNomad: `get` is async (A26), autowiring
- * reads a static `inject` list because TypeScript erases parameter
- * types (A29), binding an abstract twice throws instead of replacing
- * the earlier binding, and the container does not check the resolved
- * instance with `instanceof`, because a structural fake for a class
- * abstract is normal TypeScript.
+ * docs/architecture/ncc-slice-6.md lists where this differs from
+ * PHPNomad and why.
  */
 
 import type {
@@ -91,12 +87,18 @@ export class Container implements InstanceProvider, HasBindings {
    * by the class itself, so two classes that share a name never share a
    * binding. A typed or string token is keyed by its name.
    *
+   * A build that fails is not cached under any of the abstracts, so the
+   * next `get` of any of them builds again. A `rebind` of one abstract
+   * while the shared build is in flight stays in effect when that build
+   * finishes, and the other abstracts keep the shared instance.
+   *
    * @param concrete - The class to build
    * @param abstracts - One or more abstracts the concrete satisfies
    * @returns this
    * @throws DuplicateBindingError if any abstract is already bound, by
-   *   any form of `bind` or by `bindFactory`. Nothing from the call is
-   *   bound in that case.
+   *   any form of `bind` or by `bindFactory`, is named twice in the
+   *   call, or was already autowired by an earlier `get`. Nothing from
+   *   the call is bound in that case.
    */
   bind<C extends Constructor<object>, const A extends readonly [AnyAbstract, ...AnyAbstract[]]>(
     concrete: C & Injectable<C>,
@@ -147,15 +149,24 @@ export class Container implements InstanceProvider, HasBindings {
    * Binds an abstract to a factory, PHPNomad's
    * `bindFactory(Abstract::class, $factory)`.
    *
-   * The factory receives the container and runs once, on the first
-   * `get`, even under concurrent gets. Its result is shared from then
-   * on. A rejected or throwing factory leaves nothing cached, so a later
-   * `get` runs it again.
+   * The factory runs once, on the first `get`, even under concurrent
+   * gets. Its result is shared from then on. A rejected or throwing
+   * factory leaves nothing cached: every waiter on that run gets the
+   * same error, and the next `get` runs the factory again.
+   *
+   * The factory receives an InstanceProvider, not the container itself.
+   * A `get` through it is part of the resolution in progress, so a loop
+   * that passes through the factory fails with CircularDependencyError,
+   * including a factory that gets its own abstract and concurrent gets
+   * that enter a loop of factories at different abstracts. A 0.1
+   * factory that calls the container it closes over is outside that
+   * check, as in 0.1.
    *
    * @param abstract - A class, a typed token, or a string token
    * @param factory - Builds the instance, sync or async
    * @returns this
-   * @throws DuplicateBindingError if the abstract is already bound
+   * @throws DuplicateBindingError if the abstract is already bound, by
+   *   any form of `bind`, or was already autowired by an earlier `get`
    */
   bindFactory<T>(abstract: TypedToken<T> | AbstractConstructor<T>, factory: ContainerFactory<NoInfer<T>>): this;
   bindFactory<T>(abstract: Token, factory: ContainerFactory<T>): this;
@@ -171,6 +182,10 @@ export class Container implements InstanceProvider, HasBindings {
    * A typed token's name becomes the same string key a string token
    * would use, so rebinding through a typed token replaces a binding
    * made under a string token of the same name, and the reverse.
+   *
+   * Only the named key changes. When that key is one abstract of a
+   * class `bind`, the others keep the shared instance. A build of the
+   * old binding still in flight never overwrites the new one.
    *
    * @param token - Identifier for this binding, string or typed
    * @param factory - Function that creates the instance
@@ -198,21 +213,30 @@ export class Container implements InstanceProvider, HasBindings {
    * That holds even when the same class is bound under another abstract:
    * `get(Impl)` after `bind(Impl, Contract)` builds its own `Impl`,
    * because only the abstracts named in `bind` share an instance. A class
-   * with no constructor parameters needs no `inject` list.
+   * needs no `inject` list when neither its constructor nor any
+   * constructor it inherits declares a parameter. A subclass inherits
+   * its parent's `inject` list unless it declares its own.
    *
    * Errors come back through the returned promise:
    * - BindingNotFoundError when a typed or string token is not bound.
-   * - AutowireError, naming the class, when it needs constructor
-   *   parameters and declares no `inject` list, or its list is shorter
-   *   than its constructor.
+   * - AutowireError, naming the class, when it, or a class it inherits
+   *   its constructor from, takes constructor parameters and no
+   *   `inject` list is declared, or the list is shorter than its
+   *   constructor.
    * - AutowireError, naming the class and the failed entry, with the
    *   failure as `cause`, when an `inject` entry cannot be resolved.
    *   A failure two levels down is wrapped once per level.
    * - CircularDependencyError, with the loop as `path`, when `inject`
    *   lists form a loop, before any constructor in the loop runs, and
-   *   also when concurrent gets enter the loop at different classes.
+   *   also when concurrent gets enter the loop at different classes,
+   *   and when a loop passes through a `bindFactory` factory's provider.
    * - The requested binding's own factory or constructor error, as
-   *   thrown, with nothing cached, so a later `get` tries again.
+   *   thrown.
+   *
+   * No rejection is cached, at any level. After any failure, the next
+   * `get` of the same abstract, or of a class that needed it, tries
+   * again. Concurrent gets waiting on one failed build all get its
+   * error.
    *
    * A typed token infers its return type with no generic argument at
    * the call site, because its name resolves to the same binding a
@@ -221,9 +245,6 @@ export class Container implements InstanceProvider, HasBindings {
    * @param token - Identifier for the binding, string or typed
    * @returns Promise resolving to the instance
    * @throws BindingNotFoundError if the token's name is not bound
-   * If a singleton's factory rejects, the pending slot clears and the
-   * rejection propagates through the returned promise, so a later
-   * `get` retries the factory instead of replaying the failure.
    */
   get<T>(token: TypedToken<T>): Promise<T>;
   get<T>(abstract: AbstractConstructor<T>): Promise<T>;
@@ -231,7 +252,8 @@ export class Container implements InstanceProvider, HasBindings {
   async get<T>(abstract: AnyToken<T> | AbstractConstructor<T>): Promise<T> {
     if (typeof abstract === 'function') {
       // Stub: class abstracts and autowiring are not implemented yet.
-      // See docs/architecture/ncc-slice-6.md.
+      // See docs/architecture/ncc-slice-6.md. `undefined` is the stub's
+      // tolerated placeholder, the one value the contract never returns.
       return undefined as unknown as T;
     }
 

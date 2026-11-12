@@ -27,8 +27,9 @@ export interface HasBindings {
    * @param abstracts - One or more classes or typed tokens the concrete
    *   satisfies. A string token is also accepted.
    * @returns this, so calls chain as they do in PHPNomad
-   * @throws DuplicateBindingError if any abstract is already bound, in
-   *   which case none of them is bound
+   * @throws DuplicateBindingError if any abstract is already bound,
+   *   named twice in the call, or already autowired by an earlier `get`.
+   *   None of the call's abstracts is bound in that case.
    */
   bind<C extends Constructor<object>, const A extends readonly [AnyAbstract, ...AnyAbstract[]]>(
     concrete: C & Injectable<C>,
@@ -41,10 +42,13 @@ export interface HasBindings {
    * the container caches whatever a factory returns.
    *
    * @param abstract - The class or typed token the factory's result satisfies
-   * @param factory - Receives the container and returns the instance,
-   *   sync or async
+   * @param factory - Receives an InstanceProvider and returns the
+   *   instance, sync or async. A `get` through that provider is part of
+   *   the resolution in progress, so a loop through it fails with
+   *   CircularDependencyError instead of waiting forever.
    * @returns this
-   * @throws DuplicateBindingError if the abstract is already bound
+   * @throws DuplicateBindingError if the abstract is already bound or
+   *   already autowired by an earlier `get`
    */
   bindFactory<T>(abstract: TypedToken<T> | AbstractConstructor<T>, factory: ContainerFactory<NoInfer<T>>): this;
   bindFactory<T>(abstract: Token, factory: ContainerFactory<T>): this;
@@ -53,4 +57,4 @@ export interface HasBindings {
 /**
  * Token for the HasBindings interface.
  */
-export const HasBindings = createToken<HasBindings>('tsnomad/di/HasBindings');
+export const HasBindings = createToken<HasBindings>('HasBindings');

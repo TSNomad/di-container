@@ -20,4 +20,4 @@ export interface CanSetContainer {
 /**
  * Token for the CanSetContainer interface.
  */
-export const CanSetContainer = createToken<CanSetContainer>('tsnomad/di/CanSetContainer');
+export const CanSetContainer = createToken<CanSetContainer>('CanSetContainer');

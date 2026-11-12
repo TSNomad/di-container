@@ -14,7 +14,7 @@ export interface InstanceProvider {
    * Resolves an instance, autowiring constructor dependencies.
    *
    * Where this differs from PHPNomad: the result is a promise, because
-   * a factory may be async (A26).
+   * a factory may be async.
    *
    * @throws DiException, through the returned promise, when nothing is
    *   bound and the abstract cannot be autowired
@@ -29,4 +29,4 @@ export interface InstanceProvider {
  * `container.get(InstanceProvider)` as PHP reads
  * `$container->get(InstanceProvider::class)`.
  */
-export const InstanceProvider = createToken<InstanceProvider>('tsnomad/di/InstanceProvider');
+export const InstanceProvider = createToken<InstanceProvider>('InstanceProvider');
