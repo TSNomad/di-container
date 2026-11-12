@@ -45,9 +45,11 @@ import {
   AutowireError,
   BindingNotFoundError,
   CircularDependencyError,
+  DiException,
   DuplicateBindingError,
 } from './errors.js';
 import type { DuplicateBindingReason } from './errors.js';
+import { describeValue } from './describeValue.js';
 
 /**
  * What a binding or an autowired class is stored under: the class
@@ -140,6 +142,9 @@ export class Container implements InstanceProvider, HasBindings {
   /**
    * The key any abstract is stored under: the class itself, or the
    * token's name.
+   *
+   * @throws DiException for a value that is no class, typed token or
+   *   string token
    */
   private static keyOfAbstract(abstract: unknown): Key {
     if (typeof abstract === 'function') {
@@ -151,7 +156,7 @@ export class Container implements InstanceProvider, HasBindings {
     if (abstract !== null && typeof abstract === 'object' && typeof (abstract as { name?: unknown }).name === 'string') {
       return (abstract as { name: string }).name;
     }
-    throw new TypeError(`${String(abstract)} is not a class, a typed token or a string token`);
+    throw new DiException(`${describeValue(abstract)} is not a class, a typed token or a string token`);
   }
 
   /**

@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Container } from '../dist/Container.js';
-import { AutowireError, BindingNotFoundError, CircularDependencyError } from '../dist/errors.js';
+import { AutowireError, BindingNotFoundError, CircularDependencyError, DiException } from '../dist/errors.js';
 
 const tick = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -89,7 +89,7 @@ test('a call through a constructor property is not read as a constructor', async
   );
 });
 
-test('an undefined inject entry, as a circular import leaves one, fails naming the class, with a TypeError as cause', async () => {
+test('an undefined inject entry, as a circular import leaves one, fails naming the class, with a DiException as cause', async () => {
   class Importer {
     static readonly inject = [undefined];
     constructor(_missing?: unknown) {}
@@ -103,7 +103,7 @@ test('an undefined inject entry, as a circular import leaves one, fails naming t
       error.concrete === 'Importer' &&
       error.reason === 'dependency' &&
       error.dependency === 'undefined' &&
-      error.cause instanceof TypeError
+      error.cause instanceof DiException
   );
 });
 
@@ -113,7 +113,7 @@ test('a provider get with a value that is no abstract rejects instead of throwin
     const pending = provider.get(undefined as never);
     return pending.then(
       () => 'resolved',
-      (error: unknown) => (error instanceof TypeError ? 'rejected' : 'other')
+      (error: unknown) => (error instanceof DiException ? 'rejected' : 'other')
     );
   });
 
