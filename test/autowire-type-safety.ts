@@ -15,6 +15,8 @@
 
 import { Container } from '../dist/Container.js';
 import { createToken } from '../dist/createToken.js';
+import type { HasBindings } from '../dist/HasBindings.js';
+import type { InstanceProvider } from '../dist/InstanceProvider.js';
 
 interface Logger {
   log(message: string): void;
@@ -152,5 +154,30 @@ export async function resolvedTypes(container: Container): Promise<void> {
   void consumer;
   void store;
   void sender;
+  void wrong;
+}
+
+export async function viaInterfaces(bindings: HasBindings, provider: InstanceProvider): Promise<void> {
+  // Code that depends on the interfaces gets the same checks as code
+  // that holds the concrete Container.
+  bindings.bind(Sender, QueueConsumer).bindFactory(Clock, () => ({ now: () => 0 }));
+
+  // @ts-expect-error HasBindings checks inject lists against constructors
+  bindings.bind(NoInjectList, QueueConsumer);
+
+  // @ts-expect-error HasBindings checks the concrete against its abstracts
+  bindings.bind(ConsoleLogger, QueueConsumer);
+
+  // @ts-expect-error HasBindings checks factory return types
+  bindings.bindFactory(Clock, () => 'not a clock');
+
+  const consumer: QueueConsumer = await provider.get(QueueConsumer);
+  const store: Store = await provider.get(Store);
+
+  // @ts-expect-error InstanceProvider keeps the token's type
+  const wrong: Clock = await provider.get(Logger);
+
+  void consumer;
+  void store;
   void wrong;
 }

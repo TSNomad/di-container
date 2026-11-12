@@ -132,6 +132,21 @@ long as each message names what the tests require.
 compile-only file. The runtime tests import `dist`, as the typed-token
 tests already do.
 
+## Proof
+
+Each runtime acceptance test was run against a scratch implementation in
+a separate clone, which was then thrown away. All 46 tests passed.
+Then 32 mutations, one per guard, each built cleanly, and 31 turned the
+suite red with the expected tests failing. The harness ran three
+controls each round: a break it must catch, a comment it must not, and a
+syntax error it must refuse to score. It also refused three mutations
+whose build failed, and those were rewritten until they compiled. The
+32nd survived by design: it changed a line the scratch
+implementation never reaches, because its cycle check runs before any
+build starts. Each `@ts-expect-error` line was proven the same way, by
+loosening the signature it guards (nine mutations, each leaving the
+directive unused). The harness and its logs live in the run notes.
+
 ## Consumer check
 
 The slice is done only when the five current consumers build and test
@@ -141,3 +156,10 @@ points `@tsnomad/di-container` and `@tsnomad/event` at exact commits
 through package manager overrides, and records each install, build and
 test exit code. It never pushes. The run notes hold the list and the
 results.
+
+A consumer passes when it installs and builds, and its failing tests
+are the same set as in a baseline run of its own main branch on the
+same day. Two consumers already fail tests on main, so a red exit code
+alone proves nothing. A consumer that stops compiling because of the
+event package's 0.2.0 breaks passes when only the fixes listed in the
+event note are applied, and the report names each fix.
