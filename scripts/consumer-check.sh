@@ -9,7 +9,9 @@
 #
 # consumers.tsv has one consumer per line, tab separated, '#' for comments:
 #   name  clone-url  subdir  manager(npm|pnpm)  build-command  test-command  [extra-overrides]
-# Every field but the last is required, and a malformed row fails. The test
+# Every field but the last is required, and a malformed row fails. A list
+# that cannot be read, or that holds no consumer rows, exits 2 in every
+# mode, so a mistyped path never reads as a passing check. The test
 # command must be the consumer's real test command, not a no-op. A consumer
 # whose tests never load either package also runs its built binary once in
 # that command, so its wiring runs on the new code. extra-overrides is
@@ -63,7 +65,8 @@
 # the consumer.
 #
 # The script never commits or pushes in a clone. It exits 1 when any row
-# failed, 0 when all passed.
+# failed, 0 when all passed, and 2 for a usage error, such as a missing
+# argument or an unreadable or empty consumer list.
 
 set -u -o pipefail
 
@@ -90,10 +93,33 @@ list_rows() {
   done <"$1"
 }
 
+# Exits 2 when a consumer list cannot be read or holds no consumer rows.
+require_rows() {
+  if [ ! -f "$1" ] || [ ! -r "$1" ]; then
+    echo "cannot read the consumer list '$1'" >&2
+    exit 2
+  fi
+  if [ -z "$(list_rows "$1")" ]; then
+    echo "the consumer list '$1' holds no consumer rows" >&2
+    exit 2
+  fi
+}
+
+# Exits 2 with a usage message when a required argument is empty.
+need() {
+  if [ -z "$1" ]; then
+    echo "$2" >&2
+    exit 2
+  fi
+}
+
 if [ "${1:-}" = "compare" ]; then
-  list="${2:?consumer list required}"
-  IFS=',' read -r -a bases <<<"${3:?baseline run folders required}"
-  IFS=',' read -r -a runs <<<"${4:?run folders required}"
+  need "${2:-}" "compare needs a consumer list"
+  need "${3:-}" "compare needs baseline run folders"
+  need "${4:-}" "compare needs run folders"
+  list="$2"
+  IFS=',' read -r -a bases <<<"$3"
+  IFS=',' read -r -a runs <<<"$4"
   if [ "${#bases[@]}" -lt 2 ] || [ "${#runs[@]}" -lt 2 ]; then
     echo "compare needs at least two baseline folders and two run folders" >&2
     exit 2
@@ -104,6 +130,7 @@ if [ "${1:-}" = "compare" ]; then
     exit 2
   fi
   pinned_first="$(cat "${runs[0]}/run.pinned" 2>/dev/null || echo missing)"
+  require_rows "$list"
   failed=0
   count() { printf '%s' "$1" | grep -c . || true; }
   echo "| consumer | checks | tests base/run | new failures | changed errors | unhandled base/run | flaky in baseline | no longer failing | verdict |"
@@ -211,8 +238,10 @@ if [ "${1:-}" = "compare" ]; then
   exit "$failed"
 fi
 
-consumers_file="${1:?consumers file required}"
-mode="${2:?baseline, or a di-container sha}"
+need "${1:-}" "usage: consumer-check.sh <consumers.tsv> baseline | <di-container-sha> <event-sha>"
+need "${2:-}" "usage: consumer-check.sh <consumers.tsv> baseline | <di-container-sha> <event-sha>"
+consumers_file="$1"
+mode="$2"
 event_sha="${3:-}"
 
 if [ "$mode" != "baseline" ] && [ -z "$event_sha" ]; then
@@ -225,6 +254,7 @@ if [ "$mode" != "baseline" ]; then
   label="di-${mode:0:8}-ev-${event_sha:0:8}"
 fi
 
+require_rows "$consumers_file"
 root="${CONSUMER_CHECK_DIR:-${TMPDIR:-/tmp}/tsnomad-consumers}/$label-$(date +%Y%m%dT%H%M%S)"
 if [ -e "$root" ]; then
   echo "$root already exists" >&2
