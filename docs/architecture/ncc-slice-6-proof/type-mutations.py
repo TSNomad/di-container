@@ -34,4 +34,6 @@ MUTATIONS = [
    "  bindFactory<T>(abstract: TypedToken<T> | AbstractConstructor<T>, factory: ContainerFactory<unknown>): this;", ['HasBindings checks factory return']),
   ('TM13 InstanceProvider.get loses the token type', P, "  get<T>(abstract: TypedToken<T>): Promise<T>;", "  get<T>(abstract: TypedToken<T>): Promise<any>;",
    ['InstanceProvider keeps']),
+  ('TM14 a class rebind factory is unchecked', C, "  rebind<T>(abstract: AbstractConstructor<T>, factory: ContainerFactory<NoInfer<T>>): void;",
+   "  rebind<T>(abstract: AbstractConstructor<T>, factory: ContainerFactory<unknown>): void;", ["class rebind's factory"]),
 ]

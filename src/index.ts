@@ -36,3 +36,4 @@ export {
   AutowireError,
   CircularDependencyError,
 } from './errors.js';
+export type { DuplicateBindingReason, AutowireReason } from './errors.js';

@@ -1,5 +1,5 @@
-baseline typecheck exit=0 errors=0 directives=13
-TC1-must-catch: bind checks no abstract against the concrete: KILLED unused=[120, 123, 168] expect=[120, 123, 168] OK
+baseline typecheck exit=0 errors=0 directives=14
+TC1-must-catch: bind checks no abstract against the concrete: KILLED unused=[120, 123, 177] expect=[120, 123, 177] OK
     unused: the concrete must satisfy every abstract it is bound to
     unused: the concrete must satisfy every abstract, not only the first
     unused: HasBindings checks the concrete against its abstracts
@@ -21,16 +21,18 @@ TM7a token factories unchecked: KILLED unused=[137] expect=[137] OK
     unused: a factory must return the abstract's type
 TM7b class factories unchecked: KILLED unused=[140] expect=[140] OK
     unused: a factory for a class abstract must return that class's instance type
-TM9 Container.get loses the token type: KILLED unused=[151] expect=[151] OK
+TM9 Container.get loses the token type: KILLED unused=[160] expect=[160] OK
     unused: a token's resolved type is the token's type, not another
-TM10 HasBindings.bind skips Injectable: KILLED unused=[165] expect=[165] OK
+TM10 HasBindings.bind skips Injectable: KILLED unused=[174] expect=[174] OK
     unused: HasBindings checks inject lists against constructors
-TM11 HasBindings.bind skips the abstract check: KILLED unused=[168] expect=[168] OK
+TM11 HasBindings.bind skips the abstract check: KILLED unused=[177] expect=[177] OK
     unused: HasBindings checks the concrete against its abstracts
-TM12 HasBindings.bindFactory unchecked: KILLED unused=[171] expect=[171] OK
+TM12 HasBindings.bindFactory unchecked: KILLED unused=[180] expect=[180] OK
     unused: HasBindings checks factory return types
-TM13 InstanceProvider.get loses the token type: KILLED unused=[177] expect=[177] OK
+TM13 InstanceProvider.get loses the token type: KILLED unused=[186] expect=[186] OK
     unused: InstanceProvider keeps the token's type
+TM14 a class rebind factory is unchecked: KILLED unused=[149] expect=[149] OK
+    unused: a class rebind's factory must return that class's instance type
 restored typecheck exit=0
 directives never left unused: none
 mismatches=0

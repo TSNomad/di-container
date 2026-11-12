@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Mutation harness for the slice 6 acceptance proof.
 
-Usage: mutate.py <repo-dir> <mutations.py>
+Usage: mutate.py <repo-dir> <mutations.py> [<test-dir>]
+
+With a test dir, the mutation is made and built in repo-dir and the
+suite runs in test-dir, after its own build. That scores a mutation in
+one package against another package's tests, such as the event suite
+against a container it installs from repo-dir.
 
 Each mutation is (id, file, find, replace, expect) where expect is
 'killed' (the suite must go red), 'survive' (control, the suite must
@@ -18,11 +23,21 @@ import subprocess, sys, re, runpy, pathlib
 
 repo = pathlib.Path(sys.argv[1])
 mutations = runpy.run_path(sys.argv[2])['MUTATIONS']
+tests = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else repo
+print(f'mutations in {repo.resolve().name}, tests in {tests.resolve().name}')
 
-def run(cmd):
-    return subprocess.run(cmd, cwd=repo, shell=True, capture_output=True, text=True, timeout=300)
+def run(cmd, where=None):
+    return subprocess.run(cmd, cwd=where or repo, shell=True, capture_output=True, text=True, timeout=300)
 
-base = run('npm run build && node --test')
+def suite():
+    if tests != repo:
+        pre = run('npm run build', tests)
+        if pre.returncode != 0:
+            return pre
+    return run('node --test --test-timeout=20000', tests)
+
+b0 = run('npm run build')
+base = suite() if b0.returncode == 0 else b0
 print(f'baseline exit={base.returncode}')
 if base.returncode != 0:
     print(base.stdout[-3000:]); sys.exit(2)
@@ -48,7 +63,7 @@ for mid, rel, find, repl, expect in mutations:
             print(f'{mid}: REFUSED (build failed: {" | ".join(err)})  expect={expect}')
             if expect != 'refuse': bad += 1
             continue
-        t = run('node --test --test-timeout=20000')
+        t = suite()
         failing = re.findall(r'^✖ (.+?) \(\d', t.stdout, re.M)
         failing = [f for f in failing if not f.startswith('test/')]
         verdict = 'killed' if t.returncode != 0 else 'survived'

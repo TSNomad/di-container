@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { Container } from '../dist/Container.js';
 import { createToken } from '../dist/createToken.js';
 import { CircularDependencyError, DuplicateBindingError } from '../dist/errors.js';
+import type { InstanceProvider } from '../dist/InstanceProvider.js';
 
 const tick = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -102,12 +103,20 @@ test.skip('bindFactory on an abstract that is already bound throws DuplicateBind
 
   assert.throws(
     () => container.bindFactory(Connection, () => ({ id: 2 })),
-    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Connection'
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Connection' && error.reason === 'bound'
   );
   assert.throws(
     () => container.bind('Connection', () => ({ id: 3 })),
     (error: unknown) => error instanceof DuplicateBindingError,
     'a 0.1 bind under the same name collides as well'
+  );
+
+  const legacyFirst = new Container();
+  legacyFirst.bind(Pool, () => ({ connection: { id: 1 } }));
+  assert.throws(
+    () => legacyFirst.bindFactory(Pool, () => ({ connection: { id: 2 } })),
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Pool' && error.reason === 'bound',
+    'bindFactory after a 0.1 bind of the same token collides'
   );
 });
 
@@ -215,4 +224,73 @@ test.skip('concurrent gets that enter a factory loop at different abstracts both
     assert.equal(result.status, 'rejected');
     assert.ok((result as PromiseRejectedResult).reason instanceof CircularDependencyError);
   }
+});
+
+test.skip('concurrent factories that share a dependency with no loop both resolve, and it is built once', { timeout: 2000 }, async () => {
+  interface Left {
+    pool: Pool;
+  }
+  interface Right {
+    pool: Pool;
+  }
+  const Left = createToken<Left>('Left');
+  const Right = createToken<Right>('Right');
+  let pools = 0;
+  const container = new Container();
+  container.bindFactory(Pool, async () => {
+    pools += 1;
+    await tick(10);
+    return { connection: { id: pools } };
+  });
+  container.bindFactory(Left, async (c) => ({ pool: await c.get(Pool) }));
+  container.bindFactory(Right, async (c) => {
+    await tick(2);
+    return { pool: await c.get(Pool) };
+  });
+
+  const [left, right] = await Promise.all([container.get(Left), container.get(Right)]);
+
+  assert.equal(pools, 1, 'the shared dependency was built once');
+  assert.equal(left.pool, right.pool);
+});
+
+test.skip('a provider kept by a factory resolves as a top-level get once the factory has settled', { timeout: 2000 }, async () => {
+  interface Lazy {
+    provider: InstanceProvider;
+  }
+  const Lazy = createToken<Lazy>('Lazy');
+  class NeedsLazy {
+    static readonly inject = [Lazy] as const;
+    readonly lazy: Lazy;
+    constructor(lazy: Lazy) {
+      this.lazy = lazy;
+    }
+  }
+  const container = new Container();
+  container.bindFactory(Lazy, (c) => ({ provider: c }));
+
+  const lazy = await container.get(Lazy);
+
+  assert.equal(await lazy.provider.get(Lazy), lazy, 'a later get of its own abstract returns the cached instance');
+  const needs = await lazy.provider.get(NeedsLazy);
+  assert.equal(needs.lazy, lazy, 'a later get of a class that needs it builds');
+});
+
+test.skip('a rebind while a bindFactory run is in flight stays in effect when the run finishes', async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const container = new Container();
+  container.bindFactory('Pool', async () => {
+    await gate;
+    return { connection: { id: 1 } };
+  });
+
+  const inFlight = container.get<Pool>('Pool');
+  container.rebind('Pool', () => ({ connection: { id: 2 } }));
+  release();
+
+  assert.equal((await inFlight).connection.id, 1);
+  assert.equal((await container.get<Pool>('Pool')).connection.id, 2, 'the rebind stays in effect');
 });

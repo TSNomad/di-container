@@ -37,6 +37,10 @@ const greeter = await container.get(Greeter); // built from its inject list
 
 The 0.1 form still works: `container.bind('Logger', () => new ConsoleLogger())`.
 
+Binding an abstract twice throws a `DuplicateBindingError`. To swap one
+for a test double, call `rebind`, which takes a class or a token:
+`container.rebind(Clock, () => new FixedClock())`.
+
 ## Where this differs from PHPNomad
 
 The architecture note, `docs/architecture/ncc-slice-6.md`, keeps the

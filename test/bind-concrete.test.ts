@@ -132,14 +132,22 @@ test.skip('binding an abstract that is already bound throws and binds none of th
 
   assert.throws(
     () => container.bind(MemoryLogger, Logger, Audit),
-    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Audit'
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Audit' && error.reason === 'bound'
   );
   assert.equal(container.has(Logger), false, 'the abstract before the duplicate was not bound either');
 
   container.bind(MemoryStore, Store);
   assert.throws(
     () => container.bind(MemoryStore, Store),
-    (error: unknown) => error instanceof DuplicateBindingError
+    (error: unknown) => error instanceof DuplicateBindingError && error.reason === 'bound'
+  );
+
+  const later = new Container();
+  later.bind(MemoryLogger, Logger);
+  assert.throws(
+    () => later.bind('Logger', () => new MemoryLogger()),
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Logger' && error.reason === 'bound',
+    'a 0.1 bind after a class bind of the same token collides'
   );
 });
 
@@ -216,7 +224,7 @@ test.skip('naming the same abstract twice in one bind call throws and binds noth
 
   assert.throws(
     () => container.bind(MemoryLogger, Logger, Audit, Logger),
-    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Logger'
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Logger' && error.reason === 'repeated'
   );
   assert.equal(container.has(Logger), false);
   assert.equal(container.has(Audit), false);
@@ -270,7 +278,71 @@ test.skip('a rebind of one abstract while its shared build is in flight is not o
 
   assert.ok(first instanceof SlowLogger, 'the get that started before the rebind finishes with the old binding');
   assert.equal(await container.get(Logger), replacement, 'the rebind stays in effect');
-  assert.ok((await container.get(Audit)) instanceof SlowLogger, 'the other abstract keeps the shared instance');
+  assert.equal(await container.get(Audit), first, 'the other abstract keeps the shared instance');
+});
+
+test.skip('an old shared build that fails after a rebind leaves the rebound abstract cached', async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  class FailingLogger implements Logger, Audit {
+    static readonly inject = ['Gate'] as const;
+    constructor(gateDone: unknown) {
+      void gateDone;
+      throw new RangeError('old build failed');
+    }
+    log(): void {}
+    record(): void {}
+  }
+  const container = new Container();
+  container.bind('Gate', () => gate);
+  container.bind(FailingLogger, Logger, Audit);
+  let replacements = 0;
+
+  const inFlight = container.get(Logger);
+  container.rebind(Logger, () => {
+    replacements += 1;
+    return { log: () => {} };
+  });
+  const replacement = await container.get(Logger);
+  release();
+  await assert.rejects(inFlight, RangeError);
+
+  assert.equal(await container.get(Logger), replacement, 'the old failure did not clear the new binding');
+  assert.equal(replacements, 1, 'the new binding was built once');
+});
+
+test.skip('rebind replaces a class abstract and leaves the other abstracts of its bind call alone', async () => {
+  class FixedStore extends Store {
+    read(): string {
+      return 'fixed';
+    }
+  }
+  const container = new Container();
+  container.bind(MemoryLogger, Logger, Audit);
+  container.bind(MemoryStore, Store);
+  const audit = await container.get(Audit);
+  const before = await container.get(Store);
+
+  container.rebind(Store, () => new FixedStore());
+  const after = await container.get(Store);
+
+  assert.ok(before instanceof MemoryStore);
+  assert.ok(after instanceof FixedStore, 'the class abstract now resolves to the rebound factory');
+  assert.equal(await container.get(Store), after, 'the rebound result is cached');
+  assert.equal(await container.get(Audit), audit);
+  assert.equal(container.has(Store), true);
+
+  class Counter {
+    readonly id: number;
+    constructor(id = 1) {
+      this.id = id;
+    }
+  }
+  assert.equal((await container.get(Counter)).id, 1, 'Counter was autowired');
+  container.rebind(Counter, () => new Counter(2));
+  assert.equal((await container.get(Counter)).id, 2, 'rebind replaces an autowired class');
 });
 
 test.skip('bind and bindFactory refuse an abstract that get has already autowired', async () => {
@@ -289,11 +361,55 @@ test.skip('bind and bindFactory refuse an abstract that get has already autowire
 
   assert.throws(
     () => container.bind(FakeClock, SystemClock),
-    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'SystemClock'
+    (error: unknown) =>
+      error instanceof DuplicateBindingError && error.token === 'SystemClock' && error.reason === 'autowired'
   );
   assert.throws(
     () => container.bindFactory(SystemClock, () => new FakeClock()),
-    (error: unknown) => error instanceof DuplicateBindingError
+    (error: unknown) => error instanceof DuplicateBindingError && error.reason === 'autowired'
   );
   assert.equal((await container.get(SystemClock)).now(), 1, 'the autowired instance is still the one served');
+});
+
+test.skip('bind refuses a class whose autowired build is still in flight, and one autowired as an inject entry', async () => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  class SlowStore extends Store {
+    static readonly inject = ['Gate'] as const;
+    constructor(gateDone: unknown) {
+      super();
+      void gateDone;
+    }
+    read(): string {
+      return 'slow';
+    }
+  }
+  const container = new Container();
+  container.bind('Gate', () => gate);
+
+  const inFlight = container.get(SlowStore);
+  assert.throws(
+    () => container.bind(MemoryStore, SlowStore as never),
+    (error: unknown) => error instanceof DuplicateBindingError && error.reason === 'autowired',
+    'an autowire still in flight counts'
+  );
+  release();
+  assert.ok((await inFlight) instanceof SlowStore);
+
+  class NeedsStore {
+    static readonly inject = [Store] as const;
+    readonly store: Store;
+    constructor(store: Store) {
+      this.store = store;
+    }
+  }
+  const nested = new Container();
+  await nested.get(NeedsStore);
+  assert.throws(
+    () => nested.bind(MemoryStore, Store),
+    (error: unknown) => error instanceof DuplicateBindingError && error.reason === 'autowired',
+    'a class autowired as an inject entry counts'
+  );
 });

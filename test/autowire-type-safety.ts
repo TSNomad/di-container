@@ -139,6 +139,15 @@ export function typeChecks(container: Container): void {
 
   // @ts-expect-error a factory for a class abstract must return that class's instance type
   container.bindFactory(Store, () => 42);
+
+  // rebind takes a class abstract with a factory that receives a provider.
+  container.rebind(Store, async (c) => {
+    await c.get(Logger);
+    return new MemoryStore();
+  });
+
+  // @ts-expect-error a class rebind's factory must return that class's instance type
+  container.rebind(Store, () => 42);
 }
 
 export async function resolvedTypes(container: Container): Promise<void> {

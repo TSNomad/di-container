@@ -43,9 +43,9 @@ export interface HasBindings {
    *
    * @param abstract - The class or typed token the factory's result satisfies
    * @param factory - Receives an InstanceProvider and returns the
-   *   instance, sync or async. A `get` through that provider is part of
-   *   the resolution in progress, so a loop through it fails with
-   *   CircularDependencyError instead of waiting forever.
+   *   instance, sync or async. While the factory runs, a `get` through
+   *   that provider is part of the resolution in progress, so a loop
+   *   through it fails with CircularDependencyError.
    * @returns this
    * @throws DuplicateBindingError if the abstract is already bound or
    *   already autowired by an earlier `get`

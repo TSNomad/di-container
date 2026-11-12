@@ -84,8 +84,9 @@ test.skip('get of a concrete that is bound only under another abstract builds it
 
 test.skip('an autowired class is not reported by has', async () => {
   const container = new Container();
-  await container.get(Plain);
+  const plain = await container.get(Plain);
 
+  assert.ok(plain instanceof Plain, 'get autowired the class');
   assert.equal(container.has(Plain), false);
 });
 

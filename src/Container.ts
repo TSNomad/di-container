@@ -136,7 +136,7 @@ export class Container implements InstanceProvider, HasBindings {
     const key = Container.keyOf(token);
 
     if (this.bindings.has(key)) {
-      throw new DuplicateBindingError(key);
+      throw new DuplicateBindingError(key, 'bound');
     }
 
     this.bindings.set(key, {
@@ -154,13 +154,21 @@ export class Container implements InstanceProvider, HasBindings {
    * factory leaves nothing cached: every waiter on that run gets the
    * same error, and the next `get` runs the factory again.
    *
-   * The factory receives an InstanceProvider, not the container itself.
-   * A `get` through it is part of the resolution in progress, so a loop
+   * The factory receives an InstanceProvider. While the factory runs,
+   * a `get` through it is part of the resolution in progress, so a loop
    * that passes through the factory fails with CircularDependencyError,
    * including a factory that gets its own abstract and concurrent gets
-   * that enter a loop of factories at different abstracts. A 0.1
-   * factory that calls the container it closes over is outside that
-   * check, as in 0.1.
+   * that enter a loop of factories at different abstracts. Two
+   * resolutions that share a dependency with no loop both wait for its
+   * one build. A factory may keep the provider. Once its run has
+   * settled, a `get` through the kept provider resolves as a top-level
+   * `get` would.
+   *
+   * A 0.1 factory calls the container it closes over, so its gets are
+   * outside the resolution. A loop through 0.1 factories waits forever,
+   * as it did in 0.1, and so does every later `get` of the abstracts in
+   * that loop. Moving those factories to `bindFactory` puts them inside
+   * the check.
    *
    * @param abstract - A class, a typed token, or a string token
    * @param factory - Builds the instance, sync or async
@@ -176,24 +184,39 @@ export class Container implements InstanceProvider, HasBindings {
   }
 
   /**
-   * Replaces an existing binding.
+   * Replaces an existing binding, or adds one.
    * Useful for testing or reconfiguration.
    *
    * A typed token's name becomes the same string key a string token
    * would use, so rebinding through a typed token replaces a binding
    * made under a string token of the same name, and the reverse.
    *
+   * A class abstract is keyed by the class, as in `bind`. Its new
+   * binding is a factory that receives an InstanceProvider, as a
+   * `bindFactory` factory does, and its result is cached. Rebinding a
+   * class that `get` already autowired replaces the autowired instance.
+   *
    * Only the named key changes. When that key is one abstract of a
    * class `bind`, the others keep the shared instance. A build of the
-   * old binding still in flight never overwrites the new one.
+   * old binding still in flight never overwrites the new one, whether
+   * it succeeds or fails.
    *
-   * @param token - Identifier for this binding, string or typed
+   * @param token - Identifier for this binding: a class, a typed token
+   *   or a string token
    * @param factory - Function that creates the instance
-   * @param singleton - If true, instance is cached after first creation (default: true)
+   * @param singleton - If true, instance is cached after first creation
+   *   (default: true). Tokens only.
    */
+  rebind<T>(abstract: AbstractConstructor<T>, factory: ContainerFactory<NoInfer<T>>): void;
   rebind<T>(token: TypedToken<T>, factory: Factory<T>, singleton?: boolean): void;
   rebind<T>(token: Token, factory: Factory<T>, singleton?: boolean): void;
-  rebind<T>(token: AnyToken<T>, factory: Factory<T>, singleton = true): void {
+  rebind<T>(token: AnyToken<T> | AbstractConstructor<T>, factory: Factory<T> | ContainerFactory<T>, singleton = true): void {
+    if (typeof token === 'function') {
+      // Stub: class abstracts are not implemented yet. See
+      // docs/architecture/ncc-slice-6.md.
+      return;
+    }
+
     const key = Container.keyOf(token);
 
     // Clear cached instance if replacing
@@ -230,6 +253,8 @@ export class Container implements InstanceProvider, HasBindings {
    *   lists form a loop, before any constructor in the loop runs, and
    *   also when concurrent gets enter the loop at different classes,
    *   and when a loop passes through a `bindFactory` factory's provider.
+   *   Concurrent gets that share a dependency without a loop both wait
+   *   for its one build.
    * - The requested binding's own factory or constructor error, as
    *   thrown.
    *

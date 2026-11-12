@@ -38,6 +38,7 @@ test.skip('a class that needs constructor parameters but has no inject list fail
       error instanceof AutowireError &&
       error instanceof DiException &&
       error.concrete === 'NeedsArgsNoList' &&
+      error.reason === 'no-inject' &&
       error.message.includes('NeedsArgsNoList') &&
       error.message.includes('inject')
   );
@@ -70,7 +71,10 @@ test.skip('an inject list shorter than the constructor fails, naming the class',
   await assert.rejects(
     () => container.get(ShortList),
     (error: unknown) =>
-      error instanceof AutowireError && error.concrete === 'ShortList' && error.message.includes('ShortList')
+      error instanceof AutowireError &&
+      error.concrete === 'ShortList' &&
+      error.reason === 'short-inject' &&
+      error.message.includes('ShortList')
   );
 });
 
@@ -89,6 +93,7 @@ test.skip('an unbound inject entry fails naming the class and the entry, with th
     (error: unknown) =>
       error instanceof AutowireError &&
       error.concrete === 'Signup' &&
+      error.reason === 'dependency' &&
       error.dependency === 'Mailer' &&
       error.message.includes('Signup') &&
       error.message.includes('Mailer') &&
@@ -186,6 +191,8 @@ test.skip('a loop in inject lists fails with the loop as path, before any constr
       error instanceof CircularDependencyError &&
       error instanceof AutowireError &&
       error.path.join(' -> ') === 'Left -> Right -> Left' &&
+      error.concrete === 'Left' &&
+      error.reason === 'circular' &&
       error.message.includes('Left -> Right -> Left')
   );
   assert.equal(Right.built, 0);
@@ -232,7 +239,7 @@ test.skip('a loop that passes through a bound token is found too', async () => {
   );
 });
 
-test.skip('an unbound typed token still fails with BindingNotFoundError, a DiException', async () => {
+test('an unbound typed token still fails with BindingNotFoundError, a DiException', async () => {
   const container = new Container();
 
   await assert.rejects(
@@ -253,8 +260,27 @@ test.skip('a subclass that inherits a constructor with parameters and declares n
 
   await assert.rejects(
     () => container.get(Derived),
-    (error: unknown) => error instanceof AutowireError && error.concrete === 'Derived'
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Derived' && error.reason === 'no-inject'
   );
+});
+
+test.skip('a subclass that declares no inject list inherits its parent\'s list and is built from it', async () => {
+  class Base {
+    static readonly inject = [Mailer] as const;
+    readonly mailer: Mailer;
+    constructor(mailer: Mailer) {
+      this.mailer = mailer;
+    }
+  }
+  class Derived extends Base {}
+  const mailer: Mailer = { send: () => {} };
+  const container = new Container();
+  container.bindFactory(Mailer, () => mailer);
+
+  const derived = await container.get(Derived);
+
+  assert.ok(derived instanceof Derived);
+  assert.equal(derived.mailer, mailer, 'the inherited inject list supplied the argument');
 });
 
 test.skip('a dependency that failed once is not cached, so a later get of the class that needs it succeeds', async () => {
@@ -280,4 +306,37 @@ test.skip('a dependency that failed once is not cached, so a later get of the cl
 
   assert.equal(attempts, 2);
   assert.ok(notifier instanceof Notifier);
+});
+
+test.skip('concurrent gets of two classes that share a slow dependency with no loop both resolve, and it is built once', { timeout: 2000 }, async () => {
+  class Shared {
+    static built = 0;
+    static readonly inject = ['SlowConfig'] as const;
+    readonly config: unknown;
+    constructor(config: unknown) {
+      Shared.built += 1;
+      this.config = config;
+    }
+  }
+  class First {
+    static readonly inject = [Shared] as const;
+    readonly shared: Shared;
+    constructor(shared: Shared) {
+      this.shared = shared;
+    }
+  }
+  class Second {
+    static readonly inject = [Shared] as const;
+    readonly shared: Shared;
+    constructor(shared: Shared) {
+      this.shared = shared;
+    }
+  }
+  const container = new Container();
+  container.bind('SlowConfig', () => new Promise((resolve) => setTimeout(() => resolve('config'), 10)));
+
+  const [first, second] = await Promise.all([container.get(First), container.get(Second)]);
+
+  assert.equal(Shared.built, 1, 'the shared dependency was built once');
+  assert.equal(first.shared, second.shared);
 });
