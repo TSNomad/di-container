@@ -1,70 +1,45 @@
 mutations in ncc-s06-review-di, tests in ncc-s06-review-di
 baseline exit=0
-C1-must-catch: the reader sees no code: KILLED exit=1 expect=killed OK
-    ✖ a backtick inside a string inside a template part does not end the template
-    ✖ a constructor declared after a comment and a string is still read as declared
-    ✖ a constructor that calls super with its own arguments reads as declared
-    ✖ a constructor that forwards a rest parameter to super reads as a pass-through
-    ✖ a constructor that only forwards arguments to super reads as a pass-through
-    ✖ a constructor that spreads something other than its own rest parameter is declared
-    ✖ a constructor whose parameters hold parentheses is declared, never a pass-through
-    ✖ a division is not read as a regular expression
-    ✖ a subclass with its own constructor and no parameters needs no inject list, even when its parent takes one
+C1-must-catch: every autowired class is refused: KILLED exit=1 expect=killed OK
+    ✖ a 0.1 factory binding under a typed token satisfies an inject entry
+    ✖ a class with no constructor parameters and no inject list builds with new
+    ✖ a constructor error from the requested class passes through unchanged and nothing is cached
+    ✖ a dependency whose constructor throws is wrapped, naming the class that needed it
+    ✖ a failed autowired build leaves nothing cached, so a later get builds again
+    ✖ a failed build of a shared instance is not cached under any of its abstracts
+    ✖ an autowired class is cached like a bound one
+    ✖ an autowired class is not reported by has
+    ✖ an unbound class is autowired from its inject list
+    ✖ bind and bindFactory refuse an abstract that get has already autowired
+    ✖ bind maps a concrete to an interface token and get builds it
+    ✖ bind refuses a class whose autowired build is still in flight, and one autowired as an inject entry
+    ✖ concurrent gets of different abstracts from one bind call build one instance
+    ✖ every abstract in one bind call resolves to the same instance, built once
+    ✖ get of a concrete that is bound only under another abstract builds its own instance
+    ✖ rebind replaces a class abstract and leaves the other abstracts of its bind call alone
+    ✖ the inject list supplies constructor arguments in order, from their bindings
+    ✖ two classes that share a name never share a binding
 C2-must-survive: comment only: SURVIVED exit=0 expect=survive OK
-C3-must-refuse: syntax break: REFUSED (build failed: src/classSource.ts(84,24): error TS1138: Parameter declaration expected. | src/classSource.ts(84,69): error TS1005: '=>' expected.)  expect=refuse
-G1 line comments are read as code: KILLED exit=1 expect=killed OK
+C3-must-refuse: syntax break: REFUSED (build failed: src/Container.ts(737,15): error TS1005: ',' expected. | src/Container.ts(737,31): error TS1005: ';' expected.)  expect=refuse
+H1 the walk stops at the first constructor with no parameters: KILLED exit=1 expect=killed OK
+    ✖ a call through a constructor property is not read as a constructor
+    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
+    ✖ a class two levels below a constructor with parameters reports those parameters
     ✖ a comment that mentions constructor( does not hide an inherited constructor
-    ✖ a line comment in the class body that mentions constructor( does not count
-G2 block comments are read as code: KILLED exit=1 expect=killed OK
-    ✖ a block comment in the class body that mentions constructor( does not count
-G3 single quotes are read as code: KILLED exit=1 expect=killed OK
-    ✖ a regular expression after a keyword that holds a quote does not open a string
-    ✖ a regular expression after an operator that holds a quote does not open a string
-    ✖ a single-quoted string field that mentions constructor( does not count
-    ✖ a slash inside a character class does not end a regular expression
-    ✖ an escaped quote inside a string does not end it
-G4 double quotes are read as code: KILLED exit=1 expect=killed OK
-    ✖ a double-quoted string field that mentions constructor( does not count
-G5 an escape inside a string is not skipped: KILLED exit=1 expect=killed OK
-    ✖ an escaped quote inside a string does not end it
-G6 templates are read as code: KILLED exit=1 expect=killed OK
-    ✖ a template literal field that mentions constructor( does not count
-G7 a template part is read as template text: KILLED exit=1 expect=killed OK
-    ✖ a backtick inside a string inside a template part does not end the template
-    ✖ a nested template inside a template part does not count
-G8 quotes inside a template part are read as code: KILLED exit=1 expect=killed OK
-    ✖ a backtick inside a string inside a template part does not end the template
-G9 regular expressions are read as code: KILLED exit=1 expect=killed OK
-    ✖ a regular expression after a keyword that holds a quote does not open a string
-    ✖ a regular expression after an operator that holds a quote does not open a string
-    ✖ a slash inside a character class does not end a regular expression
-G10 no operator starts a regular expression: KILLED exit=1 expect=killed OK
-    ✖ a regular expression after an operator that holds a quote does not open a string
-    ✖ a slash inside a character class does not end a regular expression
-G11 no keyword starts a regular expression: KILLED exit=1 expect=killed OK
-    ✖ a regular expression after a keyword that holds a quote does not open a string
-G12 every slash after code starts a regular expression: KILLED exit=1 expect=killed OK
-    ✖ a division is not read as a regular expression
-G13 a slash in a character class ends the expression: KILLED exit=1 expect=killed OK
-    ✖ a slash inside a character class does not end a regular expression
-G14 a constructor at any depth counts: KILLED exit=1 expect=killed OK
-    ✖ a constructor inside a nested class does not count
-    ✖ an object literal method named constructor does not count
-G15 a static method named constructor counts: KILLED exit=1 expect=killed OK
-    ✖ a static method named constructor does not count
-G16 a brace inside the extends clause starts the body: KILLED exit=1 expect=killed OK
-    ✖ a constructor inside the extends clause does not count
-G17 no constructor forwards super(...arguments): KILLED exit=1 expect=killed OK
-    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
-    ✖ a constructor that only forwards arguments to super reads as a pass-through
-G18 no constructor forwards a rest parameter: KILLED exit=1 expect=killed OK
-    ✖ a constructor that forwards a rest parameter to super reads as a pass-through
-G19 any rest parameter counts as forwarded: KILLED exit=1 expect=killed OK
-    ✖ a constructor that spreads something other than its own rest parameter is declared
-G20 an unparsed constructor counts as a pass-through: KILLED exit=1 expect=killed OK
-    ✖ a constructor whose parameters hold parentheses is declared, never a pass-through
-G21 the container ignores pass-through and reads any constructor as declared: KILLED exit=1 expect=killed OK
-    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
+    ✖ a function-style subclass with no parameters, as ES5 output writes it, still needs an inject list
+    ✖ a method whose name ends in constructor is not read as a constructor
+    ✖ a string or template literal that mentions constructor( does not hide an inherited constructor
+    ✖ a subclass that inherits a constructor with parameters and declares no inject list fails, naming the subclass
+    ✖ a subclass whose own constructor takes no parameters, under a parent whose constructor does, needs an inject list
+    ✖ an inherited inject list is checked against the first constructor in the chain that takes parameters
+    ✖ the same class after a minifier joins its constructor statements still needs an inject list
+H2 an own inject list is held to the chain, not its own constructor: KILLED exit=1 expect=killed OK
+    ✖ an empty inject list of its own lets that subclass build with the arguments its constructor supplies
+H3 an inherited inject list counts as the class's own: KILLED exit=1 expect=killed OK
+    ✖ an inherited inject list is checked against the first constructor in the chain that takes parameters
+H4 an own inject list is never checked for length: KILLED exit=1 expect=killed OK
+    ✖ an inject list a class declares itself is checked against its own constructor
+    ✖ an inject list shorter than the constructor fails, naming the class
 F1 the 0.1 bind reads an explicit undefined singleton flag as transient: KILLED exit=1 expect=killed OK
     ✖ the 0.1 bind and rebind read an explicit undefined singleton flag as the default, a singleton
 F1b rebind reads a missing flag as transient: KILLED exit=1 expect=killed OK

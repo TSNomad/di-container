@@ -33,14 +33,9 @@ The brief capped it at ten mutations, so it samples the guards and does
 not cover each one. `review-fix-mutations.py` proves the unit tests the
 review added with its fixes, one mutation per guard: the 0.1 `bind`
 reading an explicit `undefined` singleton flag as a singleton, and the
-constructor reader in `src/classSource.ts`. Each log sits beside its
-list.
-
-The reader has one guard with no mutation that changes a result. A `}`
-nested inside a template's `${}` part is counted so the part closes at
-the right brace, but every case tried closes the template at the same
-place either way, because the text between the two braces is template
-text.
+rule that the parameter walk never stops at a constructor with no
+parameters unless the class declares its own `inject` list. Each log
+sits beside its list.
 
 The P1 implementer's full list of 83 mutations is not in this folder.
 Its log is pasted in the P1 comment on the pull request.

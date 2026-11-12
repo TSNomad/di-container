@@ -22,8 +22,23 @@ class Base {
   }
 }
 
-test('a subclass with its own constructor and no parameters needs no inject list, even when its parent takes one', async () => {
+test('a subclass whose own constructor takes no parameters, under a parent whose constructor does, needs an inject list', async () => {
   class Fixed extends Base {
+    constructor() {
+      super('fixed');
+    }
+  }
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Fixed),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Fixed' && error.reason === 'no-inject'
+  );
+});
+
+test('an empty inject list of its own lets that subclass build with the arguments its constructor supplies', async () => {
+  class Fixed extends Base {
+    static readonly inject = [] as const;
     constructor() {
       super('fixed');
     }
@@ -323,17 +338,70 @@ test('a string or template literal that mentions constructor( does not hide an i
   );
 });
 
-test('a constructor declared after a comment and a string is still read as declared', async () => {
-  class Declared extends Base {
-    label = 'a string before it';
-    // a comment before it
-    constructor() {
-      super('declared');
-    }
-  }
+
+/**
+ * Builds a class from JavaScript source, as a compiler or minifier
+ * would emit it, with `Base` in scope.
+ */
+function emitted(source: string): new () => Base {
+  return new Function('Base', `return ${source};`)(Base) as new () => Base;
+}
+
+test('a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list', async () => {
+  // What tsc and esbuild write for `class Lowered extends Base { extra = 1; }`
+  // below ES2022 or with useDefineForClassFields off.
+  const Lowered = emitted('class Lowered extends Base { constructor() { super(...arguments); this.extra = 1; } }');
   const container = new Container();
 
-  const declared = await container.get(Declared);
+  await assert.rejects(
+    () => container.get(Lowered),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Lowered' && error.reason === 'no-inject'
+  );
+});
 
-  assert.equal(declared.value, 'declared');
+test('the same class after a minifier joins its constructor statements still needs an inject list', async () => {
+  const Minified = emitted('class Minified extends Base{constructor(){super(...arguments),this.extra=1}}');
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Minified),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Minified' && error.reason === 'no-inject'
+  );
+});
+
+test('a function-style subclass with no parameters, as ES5 output writes it, still needs an inject list', async () => {
+  const Old = new Function(
+    'Base',
+    'function Old() { return Reflect.construct(Base, arguments, Old); } Object.setPrototypeOf(Old, Base); Object.setPrototypeOf(Old.prototype, Base.prototype); return Old;'
+  )(Base) as new () => Base;
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Old),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Old' && error.reason === 'no-inject'
+  );
+});
+
+test('an inject list a class declares itself is checked against its own constructor', async () => {
+  const Own = emitted('class Own extends Base { static inject = []; constructor(value) { super(value); } }');
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Own),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Own' && error.reason === 'short-inject'
+  );
+});
+
+test('an inherited inject list is checked against the first constructor in the chain that takes parameters', async () => {
+  const container = new Container();
+  container.bindFactory('Dep', () => 'dep');
+  const Pair = new Function(
+    'return class Pair { static inject = ["Dep"]; constructor(a, b) { this.a = a; this.b = b; } };'
+  )() as new () => object;
+  const Child = new Function('Pair', 'return class Child extends Pair {};')(Pair) as new () => object;
+
+  await assert.rejects(
+    () => container.get(Child),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Child' && error.reason === 'short-inject'
+  );
 });

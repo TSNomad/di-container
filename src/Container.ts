@@ -48,7 +48,6 @@ import {
   DuplicateBindingError,
 } from './errors.js';
 import type { DuplicateBindingReason } from './errors.js';
-import { ownConstructor } from './classSource.js';
 
 /**
  * What a binding or an autowired class is stored under: the class
@@ -365,9 +364,11 @@ export class Container implements InstanceProvider, HasBindings {
    * That holds even when the same class is bound under another abstract:
    * `get(Impl)` after `bind(Impl, Contract)` builds its own `Impl`,
    * because only the abstracts named in `bind` share an instance. A class
-   * needs no `inject` list when neither its constructor nor any
-   * constructor it inherits declares a parameter. A subclass inherits
-   * its parent's `inject` list unless it declares its own.
+   * needs no `inject` list when no constructor in its class chain
+   * declares a parameter. A subclass inherits its parent's `inject` list
+   * unless it declares its own. A subclass whose own constructor takes
+   * no parameter, under a parent whose constructor does, declares
+   * `static readonly inject = [] as const` to say so.
    *
    * Errors come back through the returned promise:
    * - BindingNotFoundError when a typed or string token is not bound.
@@ -665,7 +666,12 @@ export class Container implements InstanceProvider, HasBindings {
    */
   private async construct(concrete: Constructor<object>, node: BuildNode): Promise<object> {
     const inject = (concrete as { inject?: unknown }).inject;
-    const needed = Container.parameterCount(concrete);
+    // A list the class declares itself answers for its own constructor.
+    // Without one, the class is held to the first constructor in its
+    // chain that declares parameters.
+    const needed = Object.prototype.hasOwnProperty.call(concrete, 'inject')
+      ? concrete.length
+      : Container.parameterCount(concrete);
 
     if (!Array.isArray(inject)) {
       if (needed > 0) {
@@ -694,12 +700,19 @@ export class Container implements InstanceProvider, HasBindings {
   }
 
   /**
-   * How many parameters a class's constructor declares, as far as
-   * JavaScript can tell. A class with no constructor of its own uses the
-   * one it inherits, so a subclass with no constructor reports its
-   * parent's parameters, where `length` alone would report none. A
-   * parameter with a default value, and a rest parameter, do not count,
-   * as `length` does not count them.
+   * How many parameters the first constructor in a class's chain that
+   * declares any takes, or 0 when none does.
+   *
+   * JavaScript cannot tell a constructor a class wrote with no
+   * parameters from one it inherits, or from the forwarding constructor
+   * a compiler writes when it moves class fields into it for an older
+   * target. Reading the source cannot settle it either, because minifiers
+   * and compilers reshape it. So the walk never stops at a constructor
+   * with no parameters. A class whose own constructor really takes none,
+   * under a parent whose constructor takes some, declares an empty
+   * `inject` list, and `construct` then holds it to its own `length`.
+   * A parameter with a default value, and a rest parameter, do not
+   * count, as `length` does not count them.
    */
   private static parameterCount(concrete: Function): number {
     let current: unknown = concrete;
@@ -707,28 +720,9 @@ export class Container implements InstanceProvider, HasBindings {
       if (current.length > 0) {
         return current.length;
       }
-      if (Container.declaresConstructor(current)) {
-        return 0;
-      }
       current = Object.getPrototypeOf(current);
     }
     return 0;
-  }
-
-  /**
-   * Whether a class declares its own constructor. Only the class syntax
-   * can leave one out, so a plain function is its own constructor. For a
-   * class, `ownConstructor` reads the top level of its body, skipping
-   * comments and literals. A constructor that only forwards its
-   * arguments to `super`, as a compiler writes when it moves class
-   * fields into a constructor, counts as inherited.
-   */
-  private static declaresConstructor(fn: Function): boolean {
-    const source = Function.prototype.toString.call(fn);
-    if (!source.startsWith('class')) {
-      return true;
-    }
-    return ownConstructor(source) === 'declared';
   }
 
   /**
