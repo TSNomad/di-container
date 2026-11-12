@@ -258,3 +258,82 @@ test('a wait that has ended does not count toward a loop', { timeout: 2000 }, as
   assert.equal(await top, 'top');
   assert.equal(await slowRun, 'slow saw top', 'the run Quick started was not refused as a loop');
 });
+
+test('the 0.1 bind and rebind read an explicit undefined singleton flag as the default, a singleton', async () => {
+  const container = new Container();
+  let bindRuns = 0;
+  let rebindRuns = 0;
+  const flag: boolean | undefined = undefined;
+  container.bind('Bound', () => ({ run: ++bindRuns }), flag);
+  container.rebind('Rebound', () => ({ run: ++rebindRuns }), flag);
+
+  const boundFirst = await container.get('Bound');
+  const boundSecond = await container.get('Bound');
+  const reboundFirst = await container.get('Rebound');
+  const reboundSecond = await container.get('Rebound');
+
+  assert.equal(boundSecond, boundFirst, 'bind(token, factory, undefined) built a second instance');
+  assert.equal(bindRuns, 1);
+  assert.equal(reboundSecond, reboundFirst, 'rebind(token, factory, undefined) built a second instance');
+  assert.equal(rebindRuns, 1);
+});
+
+test('the 0.1 bind with an explicit false still builds a new instance on every get', async () => {
+  const container = new Container();
+  let runs = 0;
+  container.bind('Fresh', () => ({ run: ++runs }), false);
+
+  assert.notEqual(await container.get('Fresh'), await container.get('Fresh'));
+  assert.equal(runs, 2);
+});
+
+test('a comment that mentions constructor( does not hide an inherited constructor', async () => {
+  class Commented extends Base {
+    // Uses the parent constructor(value) as is.
+    describe(): string {
+      /* no constructor( of its own */
+      return 'commented';
+    }
+  }
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Commented),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Commented' && error.reason === 'no-inject'
+  );
+});
+
+test('a string or template literal that mentions constructor( does not hide an inherited constructor', async () => {
+  class Quoted extends Base {
+    single(): string {
+      return 'constructor(';
+    }
+    double(): string {
+      return "constructor (x)";
+    }
+    template(): string {
+      return `constructor(${String(this.value)})`;
+    }
+  }
+  const container = new Container();
+
+  await assert.rejects(
+    () => container.get(Quoted),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Quoted' && error.reason === 'no-inject'
+  );
+});
+
+test('a constructor declared after a comment and a string is still read as declared', async () => {
+  class Declared extends Base {
+    label = 'a string before it';
+    // a comment before it
+    constructor() {
+      super('declared');
+    }
+  }
+  const container = new Container();
+
+  const declared = await container.get(Declared);
+
+  assert.equal(declared.value, 'declared');
+});
