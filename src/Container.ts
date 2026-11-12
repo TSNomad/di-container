@@ -1,30 +1,58 @@
 /**
  * TSNomad Dependency Injection Container
  *
- * A simple DI container with string-token and typed-token bindings,
- * following the PHPNomad pattern. Supports both sync and async factory
- * functions with optional singleton caching.
+ * The TypeScript counterpart of PHPNomad's `PHPNomad\Di\Container\Container`.
+ * It binds concrete classes to abstracts, binds factories, and autowires
+ * constructors from each class's static `inject` list.
  *
  * Usage:
  * ```typescript
+ * class ForwardedEventSender implements QueueConsumer {
+ *   static readonly inject = [ConnectionStore, LoggerStrategy] as const;
+ *   constructor(connections: ConnectionStore, logger: LoggerStrategy) {}
+ * }
+ *
  * const container = new Container();
- * container.bind('Logger', () => new ConsoleLogger());
- * container.bind('Database', async () => await connectDb(), true);
+ * container
+ *   .bind(ForwardedEventSender, QueueConsumer)          // PHP: bind(Concrete::class, Abstract::class)
+ *   .bindFactory(LoggerStrategy, () => new ConsoleLogger());
  *
- * const logger = await container.get<Logger>('Logger');
- *
- * const loggerToken = createToken<Logger>('Logger');
- * const typedLogger = await container.get(loggerToken); // inferred as Logger
+ * const consumer = await container.get(QueueConsumer);  // inferred as QueueConsumer
  * ```
+ *
+ * The 0.1 form, `bind(token, factory, singleton)`, still works for
+ * string and typed tokens.
+ *
+ * Where this differs from PHPNomad: `get` is async (A26), autowiring
+ * reads a static `inject` list because TypeScript erases parameter
+ * types (A29), binding an abstract twice throws instead of replacing
+ * the earlier binding, and the container does not check the resolved
+ * instance with `instanceof`, because a structural fake for a class
+ * abstract is normal TypeScript.
  */
 
-import type { Token, TypedToken, AnyToken, Factory, Binding } from './types.js';
+import type {
+  Token,
+  TypedToken,
+  AnyToken,
+  Factory,
+  Binding,
+  AnyAbstract,
+  AbstractConstructor,
+  BindableAbstracts,
+  Constructor,
+  ContainerFactory,
+  Injectable,
+} from './types.js';
+import type { InstanceProvider } from './InstanceProvider.js';
+import type { HasBindings } from './HasBindings.js';
 import { BindingNotFoundError, DuplicateBindingError } from './errors.js';
 
 /**
- * Dependency injection container with string and typed token bindings.
+ * Dependency injection container with class, typed token and string
+ * token bindings.
  */
-export class Container {
+export class Container implements InstanceProvider, HasBindings {
   /**
    * Registered bindings keyed by token name.
    */
@@ -53,7 +81,30 @@ export class Container {
   }
 
   /**
-   * Registers a binding in the container.
+   * Binds a concrete class to one or more abstracts, PHPNomad's
+   * `bind(Concrete::class, Abstract::class, ...$abstracts)`.
+   *
+   * Every abstract in one call resolves to one shared instance, built
+   * on the first `get` of any of them, even when those gets run
+   * concurrently. The concrete's constructor arguments come from its
+   * static `inject` list, resolved in order. A class abstract is keyed
+   * by the class itself, so two classes that share a name never share a
+   * binding. A typed or string token is keyed by its name.
+   *
+   * @param concrete - The class to build
+   * @param abstracts - One or more abstracts the concrete satisfies
+   * @returns this
+   * @throws DuplicateBindingError if any abstract is already bound, by
+   *   any form of `bind` or by `bindFactory`. Nothing from the call is
+   *   bound in that case.
+   */
+  bind<C extends Constructor<object>, const A extends readonly [AnyAbstract, ...AnyAbstract[]]>(
+    concrete: C & Injectable<C>,
+    ...abstracts: A & BindableAbstracts<InstanceType<C>, A>
+  ): this;
+
+  /**
+   * Registers a factory binding in the container, the 0.1 form.
    *
    * A typed token's name becomes the same string key a string token
    * would use, so a typed token and a string token with the same name
@@ -67,7 +118,19 @@ export class Container {
    */
   bind<T>(token: TypedToken<T>, factory: Factory<T>, singleton?: boolean): void;
   bind<T>(token: Token, factory: Factory<T>, singleton?: boolean): void;
-  bind<T>(token: AnyToken<T>, factory: Factory<T>, singleton = true): void {
+  bind(
+    first: AnyToken<unknown> | Constructor<object>,
+    ...rest: unknown[]
+  ): this | void {
+    if (typeof first === 'function') {
+      // Stub: the PHPNomad form is not implemented yet. See
+      // docs/architecture/ncc-slice-6.md.
+      return this;
+    }
+
+    const token = first;
+    const factory = rest[0] as Factory<unknown>;
+    const singleton = rest.length > 1 ? (rest[1] as boolean) : true;
     const key = Container.keyOf(token);
 
     if (this.bindings.has(key)) {
@@ -78,6 +141,27 @@ export class Container {
       factory: factory as Factory<unknown>,
       singleton,
     });
+  }
+
+  /**
+   * Binds an abstract to a factory, PHPNomad's
+   * `bindFactory(Abstract::class, $factory)`.
+   *
+   * The factory receives the container and runs once, on the first
+   * `get`, even under concurrent gets. Its result is shared from then
+   * on. A rejected or throwing factory leaves nothing cached, so a later
+   * `get` runs it again.
+   *
+   * @param abstract - A class, a typed token, or a string token
+   * @param factory - Builds the instance, sync or async
+   * @returns this
+   * @throws DuplicateBindingError if the abstract is already bound
+   */
+  bindFactory<T>(abstract: TypedToken<T> | AbstractConstructor<T>, factory: ContainerFactory<NoInfer<T>>): this;
+  bindFactory<T>(abstract: Token, factory: ContainerFactory<T>): this;
+  bindFactory(_abstract: AnyAbstract, _factory: ContainerFactory<unknown>): this {
+    // Stub: not implemented yet. See docs/architecture/ncc-slice-6.md.
+    return this;
   }
 
   /**
@@ -107,7 +191,28 @@ export class Container {
   }
 
   /**
-   * Retrieves an instance from the container.
+   * Retrieves an instance from the container, autowiring constructors.
+   *
+   * A class that nothing is bound to is built from its static `inject`
+   * list and cached, as PHPNomad autowires and caches an unbound class.
+   * That holds even when the same class is bound under another abstract:
+   * `get(Impl)` after `bind(Impl, Contract)` builds its own `Impl`,
+   * because only the abstracts named in `bind` share an instance. A class
+   * with no constructor parameters needs no `inject` list.
+   *
+   * Errors come back through the returned promise:
+   * - BindingNotFoundError when a typed or string token is not bound.
+   * - AutowireError, naming the class, when it needs constructor
+   *   parameters and declares no `inject` list, or its list is shorter
+   *   than its constructor.
+   * - AutowireError, naming the class and the failed entry, with the
+   *   failure as `cause`, when an `inject` entry cannot be resolved.
+   *   A failure two levels down is wrapped once per level.
+   * - CircularDependencyError, with the loop as `path`, when `inject`
+   *   lists form a loop, before any constructor in the loop runs, and
+   *   also when concurrent gets enter the loop at different classes.
+   * - The requested binding's own factory or constructor error, as
+   *   thrown, with nothing cached, so a later `get` tries again.
    *
    * A typed token infers its return type with no generic argument at
    * the call site, because its name resolves to the same binding a
@@ -121,8 +226,16 @@ export class Container {
    * `get` retries the factory instead of replaying the failure.
    */
   get<T>(token: TypedToken<T>): Promise<T>;
+  get<T>(abstract: AbstractConstructor<T>): Promise<T>;
   get<T>(token: Token): Promise<T>;
-  async get<T>(token: AnyToken<T>): Promise<T> {
+  async get<T>(abstract: AnyToken<T> | AbstractConstructor<T>): Promise<T> {
+    if (typeof abstract === 'function') {
+      // Stub: class abstracts and autowiring are not implemented yet.
+      // See docs/architecture/ncc-slice-6.md.
+      return undefined as unknown as T;
+    }
+
+    const token = abstract;
     const key = Container.keyOf(token);
 
     // Check for cached singleton, or a singleton resolution already in flight
@@ -177,13 +290,23 @@ export class Container {
    * @returns True if the token has a binding
    */
   has<T>(token: TypedToken<T>): boolean;
+  has<T>(abstract: AbstractConstructor<T>): boolean;
   has(token: Token): boolean;
-  has<T>(token: AnyToken<T>): boolean {
-    return this.bindings.has(Container.keyOf(token));
+  has<T>(abstract: AnyToken<T> | AbstractConstructor<T>): boolean {
+    if (typeof abstract === 'function') {
+      // Stub: class abstracts are not implemented yet. A class counts as
+      // bound only when `bind` or `bindFactory` named it, never because
+      // `get` could autowire it.
+      return false;
+    }
+
+    return this.bindings.has(Container.keyOf(abstract));
   }
 
   /**
    * Gets all bound tokens.
+   *
+   * A class abstract appears under its class name.
    *
    * @returns Array of token strings
    */

@@ -1,11 +1,38 @@
 /**
  * @tsnomad/di-container
  *
- * Public entry point. Re-exports the container class, its types, and its
- * error classes so consumers can import everything from the package root.
+ * Public entry point. Re-exports the container class, its interfaces and
+ * their tokens, its types, and its error classes so consumers can import
+ * everything from the package root.
  */
 
 export { Container } from './Container.js';
-export type { Token, TypedToken, AnyToken, Factory, Binding } from './types.js';
+export { InstanceProvider } from './InstanceProvider.js';
+export { HasBindings } from './HasBindings.js';
+export { CanSetContainer } from './CanSetContainer.js';
+export type {
+  Token,
+  TypedToken,
+  AnyToken,
+  Factory,
+  Binding,
+  Constructor,
+  AbstractConstructor,
+  Abstract,
+  AnyAbstract,
+  InjectEntry,
+  InjectList,
+  Injectable,
+  AbstractType,
+  BindableAbstracts,
+  ContainerFactory,
+} from './types.js';
 export { createToken } from './createToken.js';
-export { ContainerError, BindingNotFoundError, DuplicateBindingError } from './errors.js';
+export {
+  DiException,
+  ContainerError,
+  BindingNotFoundError,
+  DuplicateBindingError,
+  AutowireError,
+  CircularDependencyError,
+} from './errors.js';

@@ -1,0 +1,212 @@
+/**
+ * Acceptance tests: `bind(concrete, abstract, ...abstracts)`, the
+ * PHPNomad form. See docs/architecture/ncc-slice-6.md.
+ *
+ * Marked `test.skip` while the container's class path is a stub. The
+ * implementer removes the marker and changes nothing else.
+ */
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Container } from '../dist/Container.js';
+import { createToken } from '../dist/createToken.js';
+import { DuplicateBindingError } from '../dist/errors.js';
+
+interface Logger {
+  log(message: string): void;
+}
+const Logger = createToken<Logger>('Logger');
+
+interface Audit {
+  record(entry: string): void;
+}
+const Audit = createToken<Audit>('Audit');
+
+class MemoryLogger implements Logger, Audit {
+  static built = 0;
+  readonly lines: string[] = [];
+  constructor() {
+    MemoryLogger.built += 1;
+  }
+  log(message: string): void {
+    this.lines.push(message);
+  }
+  record(entry: string): void {
+    this.lines.push(entry);
+  }
+}
+
+abstract class Store {
+  abstract read(key: string): string | undefined;
+}
+
+class MemoryStore extends Store {
+  read(key: string): string | undefined {
+    return key === 'greeting' ? 'hello' : undefined;
+  }
+}
+
+class Greeter {
+  static readonly inject = [Logger, Store] as const;
+  readonly logger: Logger;
+  readonly store: Store;
+  constructor(logger: Logger, store: Store) {
+    this.logger = logger;
+    this.store = store;
+  }
+}
+
+test.skip('bind maps a concrete to an interface token and get builds it', async () => {
+  const container = new Container();
+  container.bind(MemoryLogger, Logger);
+
+  const logger = await container.get(Logger);
+
+  assert.ok(logger instanceof MemoryLogger, 'the token resolves to an instance of the bound concrete');
+});
+
+test.skip('every abstract in one bind call resolves to the same instance, built once', async () => {
+  MemoryLogger.built = 0;
+  const container = new Container();
+  container.bind(MemoryLogger, Logger, Audit, MemoryLogger);
+
+  const logger = await container.get(Logger);
+  const audit = await container.get(Audit);
+  const byClass = await container.get(MemoryLogger);
+  const again = await container.get(Logger);
+
+  assert.equal(MemoryLogger.built, 1);
+  assert.equal(logger, audit);
+  assert.equal(logger, byClass);
+  assert.equal(logger, again);
+});
+
+test.skip('concurrent gets of different abstracts from one bind call build one instance', async () => {
+  MemoryLogger.built = 0;
+  const container = new Container();
+  container.bind(MemoryLogger, Logger, Audit);
+
+  const [logger, audit] = await Promise.all([container.get(Logger), container.get(Audit)]);
+
+  assert.equal(MemoryLogger.built, 1);
+  assert.equal(logger, audit);
+});
+
+test.skip('the inject list supplies constructor arguments in order, from their bindings', async () => {
+  const container = new Container();
+  container.bind(MemoryLogger, Logger).bind(MemoryStore, Store).bind(Greeter, Greeter);
+
+  const greeter = await container.get(Greeter);
+  const logger = await container.get(Logger);
+
+  assert.ok(greeter instanceof Greeter, 'get builds the bound concrete');
+  assert.equal(greeter.logger, logger, 'the first argument is the shared Logger binding');
+  assert.ok(greeter.store instanceof MemoryStore, 'the second argument is built from the Store binding');
+  assert.equal(greeter.store.read('greeting'), 'hello');
+});
+
+test.skip('bind returns the container so calls chain', () => {
+  const container = new Container();
+
+  const returned = container.bind(MemoryLogger, Logger);
+
+  assert.equal(returned, container);
+});
+
+test.skip('has reports a class abstract and a token abstract after bind', () => {
+  const container = new Container();
+  assert.equal(container.has(Store), false, 'nothing is bound yet');
+  assert.equal(container.has(Logger), false, 'nothing is bound yet');
+
+  container.bind(MemoryStore, Store).bind(MemoryLogger, Logger);
+
+  assert.equal(container.has(Store), true);
+  assert.equal(container.has(Logger), true);
+  assert.equal(container.has('Logger'), true, 'a typed token and a string token with the same name share a binding');
+  assert.equal(container.has(MemoryStore), false, 'only the abstracts named in bind are bound');
+});
+
+test.skip('binding an abstract that is already bound throws and binds none of the call', async () => {
+  const container = new Container();
+  container.bind('Audit', () => ({ record: () => {} }));
+
+  assert.throws(
+    () => container.bind(MemoryLogger, Logger, Audit),
+    (error: unknown) => error instanceof DuplicateBindingError && error.token === 'Audit'
+  );
+  assert.equal(container.has(Logger), false, 'the abstract before the duplicate was not bound either');
+
+  container.bind(MemoryStore, Store);
+  assert.throws(
+    () => container.bind(MemoryStore, Store),
+    (error: unknown) => error instanceof DuplicateBindingError
+  );
+});
+
+test.skip('two classes that share a name never share a binding', async () => {
+  const makeClass = (label: string) =>
+    class Widget {
+      readonly label = label;
+    };
+  const First = makeClass('first');
+  const Second = makeClass('second');
+  assert.equal(First.name, Second.name, 'the fixture classes share a name');
+
+  const container = new Container();
+  container.bind(First, First);
+  container.bind(Second, Second);
+
+  assert.equal((await container.get(First)).label, 'first');
+  assert.equal((await container.get(Second)).label, 'second');
+});
+
+test.skip('a string token in an inject list resolves a binding made under that string', async () => {
+  class Welcome {
+    static readonly inject = ['Greeting'] as const;
+    readonly text: string;
+    constructor(text: string) {
+      this.text = text;
+    }
+  }
+  const container = new Container();
+  container.bind('Greeting', () => 'hello');
+  container.bind(Welcome, Welcome);
+
+  const welcome = await container.get(Welcome);
+
+  assert.equal(welcome.text, 'hello');
+});
+
+test.skip('a 0.1 factory binding under a typed token satisfies an inject entry', async () => {
+  const container = new Container();
+  const lines: string[] = [];
+  container.bind(Logger, () => ({ log: (message: string) => lines.push(message) }));
+  container.bind(MemoryStore, Store);
+
+  const greeter = await container.get(Greeter);
+  greeter.logger.log('hi');
+
+  assert.deepEqual(lines, ['hi']);
+});
+
+test.skip('a constructor error from the requested class passes through unchanged and nothing is cached', async () => {
+  let attempts = 0;
+  class Flaky {
+    readonly attempt: number;
+    constructor() {
+      attempts += 1;
+      if (attempts === 1) {
+        throw new RangeError('first build fails');
+      }
+      this.attempt = attempts;
+    }
+  }
+  const container = new Container();
+  container.bind(Flaky, Flaky);
+
+  await assert.rejects(() => container.get(Flaky), (error: unknown) => error instanceof RangeError);
+  const second = await container.get(Flaky);
+
+  assert.equal(second.attempt, 2);
+  assert.equal(await container.get(Flaky), second, 'the successful build is cached');
+});
