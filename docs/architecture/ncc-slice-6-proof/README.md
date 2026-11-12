@@ -49,3 +49,15 @@ caught. Two entries, S5 and U13, are marked as understood survivors:
 they change nothing a caller can see. The list targets the code at
 3c7566f, so rerun it from a checkout of that commit. The review's own
 lists above cover the later heads, up to abdf281.
+
+## Lane s06-b fixes
+
+`s06-b-mutations.py` and its log prove the unit tests for three findings
+the review left open: a value that is no abstract throws `DiException`,
+a `'dependency'` message names a cause that is not an Error, and a class
+`bind` with no abstract throws. It holds one mutation per guard and the
+three controls, and targets this branch:
+
+```
+python3 docs/architecture/ncc-slice-6-proof/mutate.py . docs/architecture/ncc-slice-6-proof/s06-b-mutations.py
+```

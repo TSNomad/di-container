@@ -1,0 +1,27 @@
+mutations in ncc-s06-b-di, tests in ncc-s06-b-di
+baseline exit=0
+C1-must-catch bind with no abstract binds nothing again: KILLED exit=1 expect=killed OK
+    ✖ bind with a concrete and no abstract throws a DiException and binds nothing
+C2-must-survive comment only: SURVIVED exit=0 expect=survive OK
+C3-must-refuse syntax error must be refused: REFUSED (build failed: src/describeValue.ts(22,1): error TS1005: '}' expected.)  expect=refuse
+K1 a value that is no abstract throws a TypeError again: KILLED exit=1 expect=killed OK
+    ✖ a get of a value that is no abstract rejects with a DiException, keeping the message
+    ✖ a provider get with a value that is no abstract rejects instead of throwing
+    ✖ a value that is no abstract throws a DiException from has, bind and bindFactory, keeping the message
+    ✖ an undefined inject entry, as a circular import leaves one, fails naming the class, with a DiException as cause
+K2 the message reads the value through String(): KILLED exit=1 expect=killed OK
+    ✖ a value that is no abstract throws a DiException from has, bind and bindFactory, keeping the message
+D1 only an Error cause is named, the code before the fix: KILLED exit=1 expect=killed OK
+    ✖ a dependency message names a cause that is neither an Error nor a string
+    ✖ a dependency that fails with a string carries the string into the message and the cause
+D2 an undefined cause counts as no cause: KILLED exit=1 expect=killed OK
+    ✖ a dependency message names a cause that is neither an Error nor a string
+D3 any options object counts as a cause: KILLED exit=1 expect=killed OK
+    ✖ a dependency message names a cause that is neither an Error nor a string
+D4 an Error cause is named by String(), not its message: KILLED exit=1 expect=killed OK
+    ✖ a dependency error ends its message with the message of its cause, and the other reasons stand alone
+    ✖ a failure two levels down is wrapped once per level
+D5 String() may throw from a message: KILLED exit=1 expect=killed OK
+    ✖ a dependency message names a cause that is neither an Error nor a string
+    ✖ a value that is no abstract throws a DiException from has, bind and bindFactory, keeping the message
+mismatches=0

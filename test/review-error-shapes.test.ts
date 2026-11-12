@@ -75,6 +75,11 @@ test('a dependency message names a cause that is neither an Error nor a string',
   assert.equal(number.message, 'Could not resolve Missing for Clock: 42');
   assert.equal(number.cause, 42);
 
+  // An options object with no cause key is no cause, as Error reads it.
+  const empty = new AutowireError('Clock', 'dependency', 'Missing', {});
+  assert.equal(empty.message, 'Could not resolve Missing for Clock.');
+  assert.equal(Object.hasOwn(empty, 'cause'), false);
+
   const none = new AutowireError('Clock', 'dependency', 'Missing', { cause: undefined });
   assert.equal(none.message, 'Could not resolve Missing for Clock: undefined');
   assert.equal(Object.hasOwn(none, 'cause'), true);
