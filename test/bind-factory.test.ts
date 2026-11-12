@@ -28,7 +28,7 @@ abstract class Settings {
   abstract value(): string;
 }
 
-test.skip('a factory binding resolves to what the factory returns', async () => {
+test('a factory binding resolves to what the factory returns', async () => {
   const container = new Container();
   container.bindFactory(Connection, () => ({ id: 7 }));
 
@@ -37,7 +37,7 @@ test.skip('a factory binding resolves to what the factory returns', async () => 
   assert.equal(connection.id, 7);
 });
 
-test.skip('the factory receives a provider that resolves other bindings from the container', async () => {
+test('the factory receives a provider that resolves other bindings from the container', async () => {
   const container = new Container();
   container.bindFactory(Connection, () => ({ id: 1 }));
   container.bindFactory(Pool, async (c) => ({ connection: await c.get(Connection) }));
@@ -47,7 +47,7 @@ test.skip('the factory receives a provider that resolves other bindings from the
   assert.equal(pool.connection, await container.get(Connection));
 });
 
-test.skip('the factory runs once and its result is shared, even under concurrent gets', async () => {
+test('the factory runs once and its result is shared, even under concurrent gets', async () => {
   const container = new Container();
   let calls = 0;
   container.bindFactory(Connection, async () => {
@@ -64,7 +64,7 @@ test.skip('the factory runs once and its result is shared, even under concurrent
   assert.equal(first, third);
 });
 
-test.skip('a class abstract can be bound to a factory', async () => {
+test('a class abstract can be bound to a factory', async () => {
   const container = new Container();
   container.bindFactory(Settings, () => ({ value: () => 'from factory' }));
 
@@ -74,7 +74,7 @@ test.skip('a class abstract can be bound to a factory', async () => {
   assert.equal(container.has(Settings), true);
 });
 
-test.skip('a rejected factory leaves nothing cached, so a later get runs it again', async () => {
+test('a rejected factory leaves nothing cached, so a later get runs it again', async () => {
   const container = new Container();
   let attempts = 0;
   container.bindFactory(Connection, async () => {
@@ -91,13 +91,13 @@ test.skip('a rejected factory leaves nothing cached, so a later get runs it agai
   assert.equal(connection.id, 2);
 });
 
-test.skip('bindFactory returns the container so calls chain', () => {
+test('bindFactory returns the container so calls chain', () => {
   const container = new Container();
 
   assert.equal(container.bindFactory(Connection, () => ({ id: 1 })), container);
 });
 
-test.skip('bindFactory on an abstract that is already bound throws DuplicateBindingError', () => {
+test('bindFactory on an abstract that is already bound throws DuplicateBindingError', () => {
   const container = new Container();
   container.bindFactory(Connection, () => ({ id: 1 }));
 
@@ -120,7 +120,7 @@ test.skip('bindFactory on an abstract that is already bound throws DuplicateBind
   );
 });
 
-test.skip('concurrent gets of a rejecting factory run it once, all reject with that error, and a later get runs it again', async () => {
+test('concurrent gets of a rejecting factory run it once, all reject with that error, and a later get runs it again', async () => {
   const container = new Container();
   let calls = 0;
   const failure = new Error('connect refused');
@@ -143,7 +143,7 @@ test.skip('concurrent gets of a rejecting factory run it once, all reject with t
   assert.equal((await container.get(Connection)).id, 2);
 });
 
-test.skip('the class form of bind and bindFactory collide on the same abstract, in either order', () => {
+test('the class form of bind and bindFactory collide on the same abstract, in either order', () => {
   class FileSettings extends Settings {
     value(): string {
       return 'file';
@@ -164,7 +164,7 @@ test.skip('the class form of bind and bindFactory collide on the same abstract, 
   );
 });
 
-test.skip('a factory that gets its own abstract through its provider fails with CircularDependencyError', { timeout: 2000 }, async () => {
+test('a factory that gets its own abstract through its provider fails with CircularDependencyError', { timeout: 2000 }, async () => {
   const container = new Container();
   container.bindFactory(Connection, async (c) => {
     await tick(1);
@@ -177,7 +177,7 @@ test.skip('a factory that gets its own abstract through its provider fails with 
   );
 });
 
-test.skip('a loop through a factory and an inject list fails with CircularDependencyError', { timeout: 2000 }, async () => {
+test('a loop through a factory and an inject list fails with CircularDependencyError', { timeout: 2000 }, async () => {
   interface Repo {
     service: unknown;
   }
@@ -199,7 +199,7 @@ test.skip('a loop through a factory and an inject list fails with CircularDepend
   );
 });
 
-test.skip('concurrent gets that enter a factory loop at different abstracts both fail instead of waiting forever', { timeout: 2000 }, async () => {
+test('concurrent gets that enter a factory loop at different abstracts both fail instead of waiting forever', { timeout: 2000 }, async () => {
   interface Ping {
     pong: unknown;
   }
@@ -226,7 +226,7 @@ test.skip('concurrent gets that enter a factory loop at different abstracts both
   }
 });
 
-test.skip('concurrent factories that share a dependency with no loop both resolve, and it is built once', { timeout: 2000 }, async () => {
+test('concurrent factories that share a dependency with no loop both resolve, and it is built once', { timeout: 2000 }, async () => {
   interface Left {
     pool: Pool;
   }
@@ -254,7 +254,7 @@ test.skip('concurrent factories that share a dependency with no loop both resolv
   assert.equal(left.pool, right.pool);
 });
 
-test.skip('a provider kept by a factory resolves as a top-level get once the factory has settled', { timeout: 2000 }, async () => {
+test('a provider kept by a factory resolves as a top-level get once the factory has settled', { timeout: 2000 }, async () => {
   interface Lazy {
     provider: InstanceProvider;
   }
@@ -276,7 +276,7 @@ test.skip('a provider kept by a factory resolves as a top-level get once the fac
   assert.equal(needs.lazy, lazy, 'a later get of a class that needs it builds');
 });
 
-test.skip('a rebind while a bindFactory run is in flight stays in effect when the run finishes', async () => {
+test('a rebind while a bindFactory run is in flight stays in effect when the run finishes', async () => {
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -295,7 +295,7 @@ test.skip('a rebind while a bindFactory run is in flight stays in effect when th
   assert.equal((await container.get<Pool>('Pool')).connection.id, 2, 'the rebind stays in effect');
 });
 
-test.skip('a token rebind factory receives a provider, as a bindFactory factory does, and a loop through it rejects', { timeout: 2000 }, async () => {
+test('a token rebind factory receives a provider, as a bindFactory factory does, and a loop through it rejects', { timeout: 2000 }, async () => {
   const container = new Container();
   container.bind('Config', () => ({ region: 'eu' }));
   container.rebind('Region', async (provider: InstanceProvider) => (await provider.get<{ region: string }>('Config')).region);

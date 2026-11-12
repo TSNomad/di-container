@@ -38,7 +38,7 @@ class Stamp {
   }
 }
 
-test.skip('a class with no constructor parameters and no inject list builds with new', async () => {
+test('a class with no constructor parameters and no inject list builds with new', async () => {
   const container = new Container();
 
   const plain = await container.get(Plain);
@@ -46,7 +46,7 @@ test.skip('a class with no constructor parameters and no inject list builds with
   assert.ok(plain instanceof Plain);
 });
 
-test.skip('an unbound class is autowired from its inject list', async () => {
+test('an unbound class is autowired from its inject list', async () => {
   const container = new Container();
   container.bind(FixedClock, Clock);
 
@@ -57,7 +57,7 @@ test.skip('an unbound class is autowired from its inject list', async () => {
   assert.ok(stamp.plain instanceof Plain, 'an unbound class argument is autowired in turn');
 });
 
-test.skip('an autowired class is cached like a bound one', async () => {
+test('an autowired class is cached like a bound one', async () => {
   Plain.built = 0;
   const container = new Container();
 
@@ -71,7 +71,7 @@ test.skip('an autowired class is cached like a bound one', async () => {
   assert.equal(first, fourth);
 });
 
-test.skip('get of a concrete that is bound only under another abstract builds its own instance', async () => {
+test('get of a concrete that is bound only under another abstract builds its own instance', async () => {
   const container = new Container();
   container.bind(FixedClock, Clock);
 
@@ -82,7 +82,7 @@ test.skip('get of a concrete that is bound only under another abstract builds it
   assert.notEqual(viaToken, viaClass, 'only the abstracts named in bind share the instance');
 });
 
-test.skip('an autowired class is not reported by has', async () => {
+test('an autowired class is not reported by has', async () => {
   const container = new Container();
   const plain = await container.get(Plain);
 
@@ -90,7 +90,7 @@ test.skip('an autowired class is not reported by has', async () => {
   assert.equal(container.has(Plain), false);
 });
 
-test.skip('a failed autowired build leaves nothing cached, so a later get builds again', async () => {
+test('a failed autowired build leaves nothing cached, so a later get builds again', async () => {
   let attempts = 0;
   class Flaky {
     readonly attempt: number;

@@ -29,7 +29,7 @@ class NeedsArgsNoList {
   }
 }
 
-test.skip('a class that needs constructor parameters but has no inject list fails, naming the class', async () => {
+test('a class that needs constructor parameters but has no inject list fails, naming the class', async () => {
   const container = new Container();
 
   await assert.rejects(
@@ -44,7 +44,7 @@ test.skip('a class that needs constructor parameters but has no inject list fail
   );
 });
 
-test.skip('the same check applies to a class reached through bind', async () => {
+test('the same check applies to a class reached through bind', async () => {
   const container = new Container();
   // A JavaScript caller, or a cast, can reach bind without the compile-time check.
   container.bind(NeedsArgsNoList as never, Mailer as never);
@@ -55,7 +55,7 @@ test.skip('the same check applies to a class reached through bind', async () => 
   );
 });
 
-test.skip('an inject list shorter than the constructor fails, naming the class', async () => {
+test('an inject list shorter than the constructor fails, naming the class', async () => {
   class ShortList {
     static readonly inject = [Mailer];
     readonly mailer: unknown;
@@ -78,7 +78,7 @@ test.skip('an inject list shorter than the constructor fails, naming the class',
   );
 });
 
-test.skip('an unbound inject entry fails naming the class and the entry, with the lookup error as cause', async () => {
+test('an unbound inject entry fails naming the class and the entry, with the lookup error as cause', async () => {
   class Signup {
     static readonly inject = [Mailer] as const;
     readonly mailer: Mailer;
@@ -101,7 +101,7 @@ test.skip('an unbound inject entry fails naming the class and the entry, with th
   );
 });
 
-test.skip('a failure two levels down is wrapped once per level', async () => {
+test('a failure two levels down is wrapped once per level', async () => {
   class Transport {
     static readonly inject = [Mailer] as const;
     readonly mailer: Mailer;
@@ -137,7 +137,7 @@ test.skip('a failure two levels down is wrapped once per level', async () => {
   );
 });
 
-test.skip('a dependency whose constructor throws is wrapped, naming the class that needed it', async () => {
+test('a dependency whose constructor throws is wrapped, naming the class that needed it', async () => {
   class Broken {
     constructor() {
       throw new RangeError('cannot build');
@@ -183,7 +183,7 @@ class Right {
 Left.inject = [Right];
 Right.inject = [Left];
 
-test.skip('a loop in inject lists fails with the loop as path, before any constructor in it runs', async () => {
+test('a loop in inject lists fails with the loop as path, before any constructor in it runs', async () => {
   Right.built = 0;
   const container = new Container();
 
@@ -200,7 +200,7 @@ test.skip('a loop in inject lists fails with the loop as path, before any constr
   assert.equal(Right.built, 0);
 });
 
-test.skip('concurrent gets that enter a loop at different classes both fail instead of waiting forever', { timeout: 2000 }, async () => {
+test('concurrent gets that enter a loop at different classes both fail instead of waiting forever', { timeout: 2000 }, async () => {
   const container = new Container();
 
   const results = await Promise.allSettled([container.get(Left), container.get(Right)]);
@@ -211,7 +211,7 @@ test.skip('concurrent gets that enter a loop at different classes both fail inst
   assert.ok((results[1] as PromiseRejectedResult).reason instanceof CircularDependencyError);
 });
 
-test.skip('a loop that passes through a bound token is found too', async () => {
+test('a loop that passes through a bound token is found too', async () => {
   interface Repo {
     load(): void;
   }
@@ -250,7 +250,7 @@ test('an unbound typed token still fails with BindingNotFoundError, a DiExceptio
   );
 });
 
-test.skip('a subclass that inherits a constructor with parameters and declares no inject list fails, naming the subclass', async () => {
+test('a subclass that inherits a constructor with parameters and declares no inject list fails, naming the subclass', async () => {
   class Base {
     readonly mailer: unknown;
     constructor(mailer: unknown) {
@@ -266,7 +266,7 @@ test.skip('a subclass that inherits a constructor with parameters and declares n
   );
 });
 
-test.skip('a subclass that declares no inject list inherits its parent\'s list and is built from it', async () => {
+test('a subclass that declares no inject list inherits its parent\'s list and is built from it', async () => {
   class Base {
     static readonly inject = [Mailer] as const;
     readonly mailer: Mailer;
@@ -285,7 +285,7 @@ test.skip('a subclass that declares no inject list inherits its parent\'s list a
   assert.equal(derived.mailer, mailer, 'the inherited inject list supplied the argument');
 });
 
-test.skip('a dependency that failed once is not cached, so a later get of the class that needs it succeeds', async () => {
+test('a dependency that failed once is not cached, so a later get of the class that needs it succeeds', async () => {
   let attempts = 0;
   const container = new Container();
   container.bindFactory(Mailer, () => {
@@ -310,7 +310,7 @@ test.skip('a dependency that failed once is not cached, so a later get of the cl
   assert.ok(notifier instanceof Notifier);
 });
 
-test.skip('concurrent gets of two classes that share a slow dependency with no loop both resolve, and it is built once', { timeout: 2000 }, async () => {
+test('concurrent gets of two classes that share a slow dependency with no loop both resolve, and it is built once', { timeout: 2000 }, async () => {
   class Shared {
     static built = 0;
     static readonly inject = ['SlowConfig'] as const;

@@ -56,7 +56,7 @@ class Greeter {
   }
 }
 
-test.skip('bind maps a concrete to an interface token and get builds it', async () => {
+test('bind maps a concrete to an interface token and get builds it', async () => {
   const container = new Container();
   container.bind(MemoryLogger, Logger);
 
@@ -65,7 +65,7 @@ test.skip('bind maps a concrete to an interface token and get builds it', async 
   assert.ok(logger instanceof MemoryLogger, 'the token resolves to an instance of the bound concrete');
 });
 
-test.skip('every abstract in one bind call resolves to the same instance, built once', async () => {
+test('every abstract in one bind call resolves to the same instance, built once', async () => {
   MemoryLogger.built = 0;
   const container = new Container();
   container.bind(MemoryLogger, Logger, Audit, MemoryLogger);
@@ -81,7 +81,7 @@ test.skip('every abstract in one bind call resolves to the same instance, built 
   assert.equal(logger, again);
 });
 
-test.skip('concurrent gets of different abstracts from one bind call build one instance', async () => {
+test('concurrent gets of different abstracts from one bind call build one instance', async () => {
   MemoryLogger.built = 0;
   const container = new Container();
   container.bind(MemoryLogger, Logger, Audit);
@@ -92,7 +92,7 @@ test.skip('concurrent gets of different abstracts from one bind call build one i
   assert.equal(logger, audit);
 });
 
-test.skip('the inject list supplies constructor arguments in order, from their bindings', async () => {
+test('the inject list supplies constructor arguments in order, from their bindings', async () => {
   const container = new Container();
   container.bind(MemoryLogger, Logger).bind(MemoryStore, Store).bind(Greeter, Greeter);
 
@@ -105,7 +105,7 @@ test.skip('the inject list supplies constructor arguments in order, from their b
   assert.equal(greeter.store.read('greeting'), 'hello');
 });
 
-test.skip('bind returns the container so calls chain', () => {
+test('bind returns the container so calls chain', () => {
   const container = new Container();
 
   const returned = container.bind(MemoryLogger, Logger);
@@ -113,7 +113,7 @@ test.skip('bind returns the container so calls chain', () => {
   assert.equal(returned, container);
 });
 
-test.skip('has reports a class abstract and a token abstract after bind', () => {
+test('has reports a class abstract and a token abstract after bind', () => {
   const container = new Container();
   assert.equal(container.has(Store), false, 'nothing is bound yet');
   assert.equal(container.has(Logger), false, 'nothing is bound yet');
@@ -126,7 +126,7 @@ test.skip('has reports a class abstract and a token abstract after bind', () => 
   assert.equal(container.has(MemoryStore), false, 'only the abstracts named in bind are bound');
 });
 
-test.skip('binding an abstract that is already bound throws and binds none of the call', async () => {
+test('binding an abstract that is already bound throws and binds none of the call', async () => {
   const container = new Container();
   container.bind('Audit', () => ({ record: () => {} }));
 
@@ -151,7 +151,7 @@ test.skip('binding an abstract that is already bound throws and binds none of th
   );
 });
 
-test.skip('two classes that share a name never share a binding', async () => {
+test('two classes that share a name never share a binding', async () => {
   const makeClass = (label: string) =>
     class Widget {
       readonly label = label;
@@ -168,7 +168,7 @@ test.skip('two classes that share a name never share a binding', async () => {
   assert.equal((await container.get(Second)).label, 'second');
 });
 
-test.skip('a string token in an inject list resolves a binding made under that string', async () => {
+test('a string token in an inject list resolves a binding made under that string', async () => {
   class Welcome {
     static readonly inject = ['Greeting'] as const;
     readonly text: string;
@@ -185,7 +185,7 @@ test.skip('a string token in an inject list resolves a binding made under that s
   assert.equal(welcome.text, 'hello');
 });
 
-test.skip('a 0.1 factory binding under a typed token satisfies an inject entry', async () => {
+test('a 0.1 factory binding under a typed token satisfies an inject entry', async () => {
   const container = new Container();
   const lines: string[] = [];
   container.bind(Logger, () => ({ log: (message: string) => lines.push(message) }));
@@ -197,7 +197,7 @@ test.skip('a 0.1 factory binding under a typed token satisfies an inject entry',
   assert.deepEqual(lines, ['hi']);
 });
 
-test.skip('a constructor error from the requested class passes through unchanged and nothing is cached', async () => {
+test('a constructor error from the requested class passes through unchanged and nothing is cached', async () => {
   let attempts = 0;
   class Flaky {
     readonly attempt: number;
@@ -219,7 +219,7 @@ test.skip('a constructor error from the requested class passes through unchanged
   assert.equal(await container.get(Flaky), second, 'the successful build is cached');
 });
 
-test.skip('naming the same abstract twice in one bind call throws and binds nothing', () => {
+test('naming the same abstract twice in one bind call throws and binds nothing', () => {
   const container = new Container();
 
   assert.throws(
@@ -230,7 +230,7 @@ test.skip('naming the same abstract twice in one bind call throws and binds noth
   assert.equal(container.has(Audit), false);
 });
 
-test.skip('a failed build of a shared instance is not cached under any of its abstracts', async () => {
+test('a failed build of a shared instance is not cached under any of its abstracts', async () => {
   let attempts = 0;
   class FlakyLogger implements Logger, Audit {
     constructor() {
@@ -253,7 +253,7 @@ test.skip('a failed build of a shared instance is not cached under any of its ab
   assert.equal(logger, audit, 'the successful build is shared by both abstracts');
 });
 
-test.skip('a rebind of one abstract while its shared build is in flight is not overwritten by that build', async () => {
+test('a rebind of one abstract while its shared build is in flight is not overwritten by that build', async () => {
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -281,7 +281,7 @@ test.skip('a rebind of one abstract while its shared build is in flight is not o
   assert.equal(await container.get(Audit), first, 'the other abstract keeps the shared instance');
 });
 
-test.skip('an old shared build that fails after a rebind leaves the rebound abstract cached', async () => {
+test('an old shared build that fails after a rebind leaves the rebound abstract cached', async () => {
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -313,7 +313,7 @@ test.skip('an old shared build that fails after a rebind leaves the rebound abst
   assert.equal(replacements, 1, 'the new binding was built once');
 });
 
-test.skip('rebind replaces a class abstract and leaves the other abstracts of its bind call alone', async () => {
+test('rebind replaces a class abstract and leaves the other abstracts of its bind call alone', async () => {
   class FixedStore extends Store {
     read(): string {
       return 'fixed';
@@ -347,7 +347,7 @@ test.skip('rebind replaces a class abstract and leaves the other abstracts of it
   assert.equal((await container.get(Counter)).id, 2, 'rebind replaces an autowired class');
 });
 
-test.skip('bind and bindFactory refuse an abstract that get has already autowired', async () => {
+test('bind and bindFactory refuse an abstract that get has already autowired', async () => {
   class SystemClock {
     now(): number {
       return 1;
@@ -373,7 +373,7 @@ test.skip('bind and bindFactory refuse an abstract that get has already autowire
   assert.equal((await container.get(SystemClock)).now(), 1, 'the autowired instance is still the one served');
 });
 
-test.skip('bind refuses a class whose autowired build is still in flight, and one autowired as an inject entry', async () => {
+test('bind refuses a class whose autowired build is still in flight, and one autowired as an inject entry', async () => {
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -416,7 +416,7 @@ test.skip('bind refuses a class whose autowired build is still in flight, and on
   );
 });
 
-test.skip('a failed autowire leaves no mark, so the class can be bound afterwards, requested or reached as an inject entry', async () => {
+test('a failed autowire leaves no mark, so the class can be bound afterwards, requested or reached as an inject entry', async () => {
   class Clock {
     static readonly inject = ['Missing'] as const;
     constructor(missing: unknown) {
