@@ -6,6 +6,8 @@
  * `PHPNomad\Di\Exceptions\DiException`.
  */
 
+import { describeValue } from './describeValue.js';
+
 /**
  * Base error for every failure the container raises.
  */
@@ -90,7 +92,8 @@ export type AutowireReason = 'no-inject' | 'short-inject' | 'dependency' | 'circ
  * Thrown when the container cannot build a class. The message is built
  * from the fields. It always names the class, and names the dependency
  * when one failed, followed by the message of the error that caused it,
- * so the whole chain reads in one line.
+ * so the whole chain reads in one line. A cause that is not an Error is
+ * named as text, a string as given.
  */
 export class AutowireError extends DiException {
   constructor(
@@ -102,19 +105,27 @@ export class AutowireError extends DiException {
     public readonly dependency?: string,
     options?: { cause?: unknown }
   ) {
-    super(AutowireError.describe(concrete, reason, dependency, options?.cause), options);
+    super(AutowireError.describe(concrete, reason, dependency, options), options);
     this.name = 'AutowireError';
   }
 
-  private static describe(concrete: string, reason: AutowireReason, dependency?: string, cause?: unknown): string {
+  private static describe(
+    concrete: string,
+    reason: AutowireReason,
+    dependency?: string,
+    options?: { cause?: unknown }
+  ): string {
     switch (reason) {
       case 'no-inject':
         return `${concrete} takes constructor parameters but declares no static inject list.`;
       case 'short-inject':
         return `${concrete}'s static inject list is shorter than its constructor.`;
       case 'dependency':
+        // A cause given as anything, even undefined, is named, so a
+        // factory that throws a string still says why. Only a missing
+        // cause ends the sentence.
         return `Could not resolve ${dependency ?? 'an inject entry'} for ${concrete}`
-          + (cause instanceof Error ? `: ${cause.message}` : '.');
+          + (options !== undefined && 'cause' in options ? `: ${describeValue(options.cause)}` : '.');
       default:
         return `${concrete} is part of a dependency loop.`;
     }

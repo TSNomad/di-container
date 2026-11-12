@@ -4,17 +4,14 @@
  */
 
 /**
- * A value as text for an error message: an Error by its message, a
- * string as given, anything else through `String()`, and an object that
+ * A value as text for an error message: an Error by its message,
+ * anything else through `String()`, and an object that
  * `String()` cannot convert, such as one with no prototype, by its tag.
  * Never throws, so building an error message cannot fail.
  */
 export function describeValue(value: unknown): string {
   if (value instanceof Error) {
     return value.message;
-  }
-  if (typeof value === 'string') {
-    return value;
   }
   try {
     return String(value);
