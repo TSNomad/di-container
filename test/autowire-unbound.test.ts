@@ -1,8 +1,6 @@
 /**
  * Acceptance tests: `get` autowires a class nothing is bound to, as
  * PHPNomad's container does. See docs/architecture/ncc-slice-6.md.
- *
- * Marked `test.skip` while the container's class path is a stub.
  */
 
 import { test } from 'node:test';

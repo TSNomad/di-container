@@ -2,8 +2,6 @@
  * Acceptance tests: the errors autowiring raises. Each one must name
  * the class the container was building, so a wiring mistake can be
  * found from the message alone. See docs/architecture/ncc-slice-6.md.
- *
- * Marked `test.skip` while the container's class path is a stub.
  */
 
 import { test } from 'node:test';

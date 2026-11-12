@@ -13,8 +13,9 @@ as the Proof section of `../ncc-slice-6.md` describes.
   `type-mutations.py` into `type-mutations.log`, and reports which
   `@ts-expect-error` lines each loosening left unused.
 
-The mutations target a scratch implementation in a separate clone that
-is never committed, so they do not apply to this branch. Each run
+`mutations.py`, `type-mutations.py` and their logs come from the
+architecture phase. They target a scratch implementation in a separate
+clone that is never committed, so they do not apply to this branch. Each run
 starts with three controls: a break the harness must catch, a comment it
 must not, and a syntax error it must refuse to score.
 
@@ -37,5 +38,14 @@ rule that the parameter walk never stops at a constructor with no
 parameters, except at a class that declares an empty `inject` list. Each log
 sits beside its list.
 
-The P1 implementer's full list of 83 mutations is not in this folder.
-Its log is pasted in the P1 comment on the pull request.
+## Packet P1 list
+
+`p1-mutations.py` and `p1-mutations.log` are the P1 implementer's full
+list, 83 entries with the three controls, run against the P1 head,
+3c7566f. One entry, M11, was refused because its edit did not build,
+so the log ends with one mismatch. `p1-mutations-m11.py` reruns M11
+with a building edit, with the three controls, and its log shows it
+caught. Two entries, S5 and U13, are marked as understood survivors:
+they change nothing a caller can see. The list targets the code at
+3c7566f, so rerun it from a checkout of that commit. The review's own
+lists above cover the later heads, up to abdf281.

@@ -8,9 +8,6 @@
  * signature is loosened so the call compiles, TypeScript reports the
  * directive as unused and `npm run typecheck` fails. The lines without
  * a directive must keep compiling.
- *
- * The signatures are the architecture's finished surface, so these
- * checks hold at stub time and carry no incomplete marker.
  */
 
 import { Container } from '../dist/Container.js';

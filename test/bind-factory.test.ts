@@ -1,8 +1,6 @@
 /**
  * Acceptance tests: `bindFactory(abstract, factory)`, PHPNomad's form.
  * See docs/architecture/ncc-slice-6.md.
- *
- * Marked `test.skip` while `bindFactory` is a stub.
  */
 
 import { test } from 'node:test';

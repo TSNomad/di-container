@@ -43,8 +43,27 @@ for a test double, call `rebind`, which takes a class or a token:
 
 ## Where this differs from PHPNomad
 
-The architecture note, `docs/architecture/ncc-slice-6.md`, keeps the
-list of differences and the reason for each.
+- `get` is async and returns a promise, because factories may be
+  async. PHPNomad is synchronous. Node's I/O forces this one.
+- Autowiring reads a static `inject` list, checked against the
+  constructor at compile time, because TypeScript keeps no parameter
+  types at run time. A subclass whose own constructor takes no
+  parameter, under a parent whose constructor does, declares
+  `static readonly inject = [] as const`.
+- An interface is a typed token with the bare interface name, such as
+  `'InstanceProvider'`, because TypeScript erases interfaces.
+- Binding an abstract twice throws, and so does binding a class a `get`
+  already autowired. PHPNomad replaces the binding. `rebind` replaces on
+  purpose.
+- A factory receives an `InstanceProvider`. A loop through `inject`
+  lists, bound tokens or those factories throws
+  `CircularDependencyError` instead of hanging. A loop through 0.1
+  factories, which take no argument, still hangs, as it did in 0.1.
+- The `InstanceProvider`, `HasBindings` and `CanSetContainer` interfaces
+  live in this package, not in a separate `di` package.
+
+The architecture note, `docs/architecture/ncc-slice-6.md`, gives the
+reason for each and the full list.
 
 ## Extracted 2026-09-17
 

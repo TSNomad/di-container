@@ -1,7 +1,9 @@
 # Container reshape toward PHPNomad
 
-Status: architecture phase. Stubs and acceptance tests are committed.
-The acceptance tests are marked `test.skip` until each packet lands.
+Status: implemented. Packet P1, the container class path, landed on
+this branch, and the slice review's fixes are in, up to abdf281. Every
+acceptance test runs. The consumer check against the five current
+consumers has not run yet.
 
 This is slice 6 of the Siren Node commerce connectors build, the
 container half. The event half lives in the event repository, in its own
@@ -43,15 +45,30 @@ Autowiring reads a static `inject` list. TypeScript erases parameter
 types, so the container cannot read them the way PHP reflection does.
 The `Injectable<C>` type ties the list to the constructor at compile
 time: one entry per parameter, each a token or class whose type fits
-that parameter. A class needs no list when neither its constructor nor
-any constructor it inherits declares a parameter. A subclass inherits
-its parent's list unless it declares its own. A class that needs
-parameters and has no list, or a list shorter than its constructor,
-fails at resolve time with an `AutowireError` naming the class. The
-container cannot see rest parameters at run time, so an unbound class
-whose constructor takes only `...deps` builds with no arguments unless it
-declares a list. `bind` still rejects such a class at compile time when
-the list is missing.
+that parameter. A class needs no list when no constructor in its class
+chain declares a parameter. A subclass inherits its parent's list
+unless it declares its own. A missing list, and any list but an empty
+one, own or inherited, is held to the first constructor in the whole
+chain that declares parameters. An empty list,
+`static readonly inject = [] as const`, ends that walk at the class that
+declares it: the container counts constructors from the requested class
+up to and including that class, and never looks above it. That is how a
+subclass whose own constructor takes no parameter, under a parent whose
+constructor does, says so. JavaScript cannot tell such a constructor
+from an inherited one, or from the forwarding constructor a compiler
+writes for class fields, so the container never takes a constructor
+with no parameters as the end of the walk on its own. A class that needs
+parameters and has no list, or a list shorter than the constructor it
+is held to, fails at resolve time with an `AutowireError` naming the
+class.
+
+The walk reads each constructor's `length`, which cannot see three
+kinds of parameter: a rest parameter, a parameter with a default value,
+and any parameter after one with a default. So an unbound class whose
+constructor takes only `...deps` builds with no arguments unless it
+declares a list, and a class whose parameters all have defaults builds
+with its defaults. `bind` still rejects such a class at compile time
+when the list is missing.
 
 The three PHPNomad interfaces arrive with same-named tokens:
 `InstanceProvider` (`get`), `HasBindings` (`bind`, `bindFactory`) and
@@ -120,6 +137,11 @@ Caching and failure:
   `get` of any abstract of that binding, or of a class that needed it,
   tries again. Concurrent gets waiting on one failed run all get its
   error, and the run is not repeated for them.
+- A retry runs the factory or constructor again from the start, so a
+  side effect it made before it failed, such as a write or a request
+  sent, happens again. Keep side effects out of factories and
+  constructors, or key them so a second run finds the first one's
+  result and stops, with the dedupe done atomically at the write.
 - Errors from the requested binding's own constructor or factory pass
   through unchanged.
 - A failure while resolving an `inject` entry becomes an `AutowireError`
@@ -164,6 +186,19 @@ Loops:
 - Binding an abstract twice throws instead of replacing the first
   binding, so a wiring mistake shows at startup. `rebind` replaces on
   purpose, for a class or a token.
+- `bind` refuses a class that a `get` has already autowired, with the
+  reason `'autowired'`. PHPNomad's `bind` replaces the binding and drops
+  the cached instance, so later gets build the new concrete. Here an
+  instance already handed out would go on living beside the new one, so
+  the wiring mistake shows at the `bind` instead.
+- PHPNomad keys an interface by its fully qualified class name. A token
+  here carries the bare interface name, `'InstanceProvider'`,
+  `'HasBindings'` and `'CanSetContainer'`, not the namespaced form design
+  section 2 shows, such as `'tsnomad/event/EventStrategy'`. A typed token
+  shares a binding with the string of its name, and `@tsnomad/loader`
+  0.1 binds bare strings, so the bare name keeps 0.1 wiring working. Two
+  packages that export interfaces with one name would share a key, so a
+  new interface must not reuse a token name.
 - The container detects loops and throws `CircularDependencyError`, a
   subclass of the new `AutowireError`. PHPNomad has neither. A PHP loop
   recurses until the stack overflows, which is loud. Here, the cache
@@ -205,22 +240,13 @@ Loops:
 
 ## Files
 
-| File | Role | State |
-|---|---|---|
-| `src/types.ts` | `Constructor`, `AbstractConstructor`, `Abstract`, `AnyAbstract`, `InjectEntry`, `InjectList`, `Injectable`, `AbstractType`, `BindableAbstracts`, `ContainerFactory` | final |
-| `src/InstanceProvider.ts`, `src/HasBindings.ts`, `src/CanSetContainer.ts` | PHPNomad interfaces and their tokens | final |
-| `src/errors.ts` | `DiException`, `ContainerError` alias, `DuplicateBindingError` with its reasons, `AutowireError`, `CircularDependencyError` | final, each builds its message from its fields |
-| `src/Container.ts` | the class path of `bind`, `bindFactory`, `rebind`, `get`, `has`, and the provider a token `rebind` passes | stubbed |
-| `scripts/consumer-check.sh` | builds and tests consumers against exact commits | final |
-
-The stubs never throw. `bind` and `bindFactory` return `this` without
-storing, `rebind` of a class stores nothing, a token `rebind` stores a
-factory that is called with no provider, `get` of a class returns
-`undefined`, and `has` of a class returns `false`. `undefined` from
-`get` is a value the contract never returns. It is the one tolerated
-placeholder, because any instance would be a guess. The string and typed
-token paths are untouched. The error classes build their own messages,
-so the implementer passes fields, never wording.
+| File | Role |
+|---|---|
+| `src/types.ts` | `Constructor`, `AbstractConstructor`, `Abstract`, `AnyAbstract`, `InjectEntry`, `InjectList`, `Injectable`, `AbstractType`, `BindableAbstracts`, `ContainerFactory` |
+| `src/InstanceProvider.ts`, `src/HasBindings.ts`, `src/CanSetContainer.ts` | PHPNomad interfaces and their tokens |
+| `src/errors.ts` | `DiException`, `ContainerError` alias, `DuplicateBindingError` with its reasons, `AutowireError`, `CircularDependencyError`, each building its message from its fields |
+| `src/Container.ts` | `bind`, `bindFactory`, `rebind`, `get`, `has`, the class path from packet P1 and the review's fixes |
+| `scripts/consumer-check.sh` | builds and tests consumers against exact commits |
 
 ## Acceptance tests
 
@@ -232,16 +258,26 @@ so the implementer passes fields, never wording.
 | `test/bind-factory.test.ts` | 16 | `bindFactory`: result, provider argument, one run under concurrency, one run for concurrent waiters on a failure, class abstracts, retry after rejection, chaining, the duplicate rules in every order, loops through factories, a shared dependency that is no loop, a kept provider, `rebind` during a run, the provider a token `rebind` passes |
 | `test/autowire-type-safety.ts` | 14 rejected calls | compile-only: `inject` lists checked against constructors, concretes checked against abstracts, factory return types for `bindFactory` and a class `rebind`, inferred `get` types, the same checks through the interfaces |
 
-That is 57 runtime tests. Three of them check code that is already
-final, so they run now: the unbound typed token and the two message
-tests. The other 54 are skipped until the packet lands. `npm test` builds and runs every file.
+That is 57 acceptance tests. P1 and the review added
+`test/container-internals.test.ts`, 25 unit tests of the container's
+own internals, and the 11 typed-token tests from the earlier work still
+run. `npm test` builds and runs every file and reports 95, because it
+also counts the two compile-only files as empty passes.
 `npm run typecheck` checks the compile-only file. The runtime tests
 import `dist`, as the typed-token tests already do.
 
 ## Proof
 
 The record is in `docs/architecture/ncc-slice-6-proof/`: the two
-harnesses, the mutation lists and their logs.
+harnesses, the mutation lists and their logs. It holds three sets. The
+architecture phase's lists, described below, scored the tests against
+a scratch implementation. The P1 implementer's list scored the real
+code at the P1 head, 3c7566f: 83 entries, with one entry rerun on its
+own after its first edit failed to build. The slice review's lists
+scored the branch up to abdf281. The proof folder's README says how to
+rerun each.
+
+The architecture phase's proof ran as follows.
 
 A scratch implementation in a separate clone passed all 57 runtime
 tests and the 11 earlier typed-token tests. That clone is never

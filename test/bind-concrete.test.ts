@@ -1,9 +1,6 @@
 /**
  * Acceptance tests: `bind(concrete, abstract, ...abstracts)`, the
  * PHPNomad form. See docs/architecture/ncc-slice-6.md.
- *
- * Marked `test.skip` while the container's class path is a stub. The
- * implementer removes the marker and changes nothing else.
  */
 
 import { test } from 'node:test';
