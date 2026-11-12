@@ -405,3 +405,46 @@ test('an inherited inject list is checked against the first constructor in the c
     (error: unknown) => error instanceof AutowireError && error.concrete === 'Child' && error.reason === 'short-inject'
   );
 });
+
+test('a non-empty inject list of its own on a subclass with no constructor is held to the parent constructor', async () => {
+  const container = new Container();
+  container.bindFactory('A', () => 'a');
+  const Pair = new Function('return class Pair { static inject = ["A", "A"]; constructor(a, b) { this.a = a; this.b = b; } };')() as new () => object;
+  const Short = new Function('Pair', 'return class Short extends Pair { static inject = ["A"]; };')(Pair) as new () => object;
+
+  await assert.rejects(
+    () => container.get(Short),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Short' && error.reason === 'short-inject'
+  );
+});
+
+test('an own inject field with no value, or null, counts as no list', async () => {
+  const container = new Container();
+  const Unset = emitted('class Unset extends Base { static inject; }');
+  const Nulled = emitted('class Nulled extends Base { static inject = null; }');
+
+  await assert.rejects(
+    () => container.get(Unset),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Unset' && error.reason === 'no-inject'
+  );
+  await assert.rejects(
+    () => container.get(Nulled),
+    (error: unknown) => error instanceof AutowireError && error.concrete === 'Nulled' && error.reason === 'no-inject'
+  );
+});
+
+test('a subclass that inherits an empty inject list builds as the class that declared it does', async () => {
+  class Fixed extends Base {
+    static readonly inject = [] as const;
+    constructor() {
+      super('fixed');
+    }
+  }
+  class Leaf extends Fixed {}
+  const container = new Container();
+
+  const leaf = await container.get(Leaf);
+
+  assert.ok(leaf instanceof Leaf);
+  assert.equal(leaf.value, 'fixed');
+});

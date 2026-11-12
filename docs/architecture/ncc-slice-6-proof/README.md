@@ -28,13 +28,13 @@ python3 docs/architecture/ncc-slice-6-proof/mutate.py . docs/architecture/ncc-sl
 python3 docs/architecture/ncc-slice-6-proof/mutate.py . docs/architecture/ncc-slice-6-proof/review-fix-mutations.py
 ```
 
-`review-mutations.py` is a spot check of the P1 class path, R1 to R6.
+`review-mutations.py` is a spot check of the P1 class path, R1 to R5.
 The brief capped it at ten mutations, so it samples the guards and does
 not cover each one. `review-fix-mutations.py` proves the unit tests the
 review added with its fixes, one mutation per guard: the 0.1 `bind`
 reading an explicit `undefined` singleton flag as a singleton, and the
 rule that the parameter walk never stops at a constructor with no
-parameters unless the class declares its own `inject` list. Each log
+parameters, except at a class that declares an empty `inject` list. Each log
 sits beside its list.
 
 The P1 implementer's full list of 83 mutations is not in this folder.

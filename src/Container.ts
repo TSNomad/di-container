@@ -368,7 +368,8 @@ export class Container implements InstanceProvider, HasBindings {
    * declares a parameter. A subclass inherits its parent's `inject` list
    * unless it declares its own. A subclass whose own constructor takes
    * no parameter, under a parent whose constructor does, declares
-   * `static readonly inject = [] as const` to say so.
+   * `static readonly inject = [] as const` to say so. Any other list is
+   * held to the first constructor in the chain that declares parameters.
    *
    * Errors come back through the returned promise:
    * - BindingNotFoundError when a typed or string token is not bound.
@@ -666,12 +667,12 @@ export class Container implements InstanceProvider, HasBindings {
    */
   private async construct(concrete: Constructor<object>, node: BuildNode): Promise<object> {
     const inject = (concrete as { inject?: unknown }).inject;
-    // A list the class declares itself answers for its own constructor.
-    // Without one, the class is held to the first constructor in its
-    // chain that declares parameters.
-    const needed = Object.prototype.hasOwnProperty.call(concrete, 'inject')
-      ? concrete.length
-      : Container.parameterCount(concrete);
+    // An empty list says the class that declares it supplies its own
+    // super arguments, so the walk stops there. Any other list, own or
+    // inherited, and a missing one, are held to the first constructor in
+    // the whole chain that declares parameters.
+    const stop = Array.isArray(inject) && inject.length === 0 ? Container.ownerOfInject(concrete) : undefined;
+    const needed = Container.parameterCount(concrete, stop);
 
     if (!Array.isArray(inject)) {
       if (needed > 0) {
@@ -710,19 +711,39 @@ export class Container implements InstanceProvider, HasBindings {
    * and compilers reshape it. So the walk never stops at a constructor
    * with no parameters. A class whose own constructor really takes none,
    * under a parent whose constructor takes some, declares an empty
-   * `inject` list, and `construct` then holds it to its own `length`.
-   * A parameter with a default value, and a rest parameter, do not
-   * count, as `length` does not count them.
+   * `inject` list. The walk then stops at that class, after counting its
+   * own constructor, and so it does for every subclass that inherits
+   * the empty list. A rest parameter does not count, and neither does a
+   * parameter with a default value or any parameter after one, because
+   * `length` stops at the first default.
    */
-  private static parameterCount(concrete: Function): number {
+  private static parameterCount(concrete: Function, stop?: Function): number {
     let current: unknown = concrete;
     while (typeof current === 'function' && current !== Function.prototype) {
       if (current.length > 0) {
         return current.length;
       }
+      if (current === stop) {
+        return 0;
+      }
       current = Object.getPrototypeOf(current);
     }
     return 0;
+  }
+
+  /**
+   * The class in a chain that declares the `inject` a class reads, the
+   * nearest one with its own `inject`.
+   */
+  private static ownerOfInject(concrete: Function): Function | undefined {
+    let current: unknown = concrete;
+    while (typeof current === 'function' && current !== Function.prototype) {
+      if (Object.prototype.hasOwnProperty.call(current, 'inject')) {
+        return current;
+      }
+      current = Object.getPrototypeOf(current);
+    }
+    return undefined;
   }
 
   /**
