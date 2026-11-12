@@ -48,6 +48,7 @@ import {
   DuplicateBindingError,
 } from './errors.js';
 import type { DuplicateBindingReason } from './errors.js';
+import { ownConstructor } from './classSource.js';
 
 /**
  * What a binding or an autowired class is stored under: the class
@@ -716,56 +717,18 @@ export class Container implements InstanceProvider, HasBindings {
 
   /**
    * Whether a class declares its own constructor. Only the class syntax
-   * can leave one out. A plain function is its own constructor. A class
-   * counts as declaring one when its source, with comments and string
-   * and template literals removed, has `constructor(` outside a property
-   * access. A comment or a string that mentions a constructor therefore
-   * never hides an inherited one. Two gaps remain. The constructor of a
-   * class nested inside a method body is read as this class's own, and
-   * a regular expression literal that holds a quote can hide a real
-   * constructor, which then asks for the inherited parameters and fails
-   * loudly with AutowireError.
+   * can leave one out, so a plain function is its own constructor. For a
+   * class, `ownConstructor` reads the top level of its body, skipping
+   * comments and literals. A constructor that only forwards its
+   * arguments to `super`, as a compiler writes when it moves class
+   * fields into a constructor, counts as inherited.
    */
   private static declaresConstructor(fn: Function): boolean {
     const source = Function.prototype.toString.call(fn);
     if (!source.startsWith('class')) {
       return true;
     }
-    return /(^|[^.\w$])constructor\s*\(/.test(Container.withoutCommentsOrStrings(source));
-  }
-
-  /**
-   * A class's source with every comment and every string or template
-   * literal replaced by a space, so only code is left to read. A
-   * template literal is skipped whole, `${}` parts included.
-   */
-  private static withoutCommentsOrStrings(source: string): string {
-    let code = '';
-    let i = 0;
-    while (i < source.length) {
-      const char = source[i];
-      const next = source[i + 1];
-      if (char === '/' && next === '/') {
-        const end = source.indexOf('\n', i);
-        i = end === -1 ? source.length : end;
-        code += ' ';
-      } else if (char === '/' && next === '*') {
-        const end = source.indexOf('*/', i + 2);
-        i = end === -1 ? source.length : end + 2;
-        code += ' ';
-      } else if (char === "'" || char === '"' || char === '`') {
-        i += 1;
-        while (i < source.length && source[i] !== char) {
-          i += source[i] === '\\' ? 2 : 1;
-        }
-        i += 1;
-        code += ' ';
-      } else {
-        code += char;
-        i += 1;
-      }
-    }
-    return code;
+    return ownConstructor(source) === 'declared';
   }
 
   /**

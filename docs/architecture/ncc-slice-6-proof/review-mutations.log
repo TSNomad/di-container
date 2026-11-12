@@ -5,6 +5,7 @@ C1-must-catch: get always rejects: KILLED exit=1 expect=killed OK
     ✖ a 0.1 factory binding under a typed token satisfies an inject entry
     ✖ a call through a constructor property is not read as a constructor
     ✖ a class abstract can be bound to a factory
+    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
     ✖ a class that needs constructor parameters but has no inject list fails, naming the class
     ✖ a class two levels below a constructor with parameters reports those parameters
     ✖ a class with no constructor parameters and no inject list builds with new
@@ -75,7 +76,7 @@ C1-must-catch: get always rejects: KILLED exit=1 expect=killed OK
     ✖ the same check applies to a class reached through bind
     ✖ two classes that share a name never share a binding
 C2-must-survive: comment only: SURVIVED exit=0 expect=survive OK
-C3-must-refuse: syntax break: REFUSED (build failed: src/Container.ts(212,10): error TS1005: ';' expected. | src/Container.ts(212,39): error TS1109: Expression expected.)  expect=refuse
+C3-must-refuse: syntax break: REFUSED (build failed: src/Container.ts(213,10): error TS1005: ';' expected. | src/Container.ts(213,39): error TS1109: Expression expected.)  expect=refuse
 R1 a failed build stays pending, so its rejection is cached: KILLED exit=1 expect=killed OK
     ✖ a constructor error from the requested class passes through unchanged and nothing is cached
     ✖ a dependency that failed once is not cached, so a later get of the class that needs it succeeds
@@ -89,6 +90,7 @@ R3 a short inject list is accepted: KILLED exit=1 expect=killed OK
     ✖ an inject list shorter than the constructor fails, naming the class
 R4 inherited constructor parameters are ignored: KILLED exit=1 expect=killed OK
     ✖ a call through a constructor property is not read as a constructor
+    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
     ✖ a class two levels below a constructor with parameters reports those parameters
     ✖ a comment that mentions constructor( does not hide an inherited constructor
     ✖ a method whose name ends in constructor is not read as a constructor
@@ -103,16 +105,6 @@ R5 no loop check when waiting on a build in flight: KILLED exit=1 expect=killed 
     ✖ a token rebind factory receives a provider, as a bindFactory factory does, and a loop through it rejects
     ✖ concurrent gets that enter a factory loop at different abstracts both fail instead of waiting forever
     ✖ concurrent gets that enter a loop at different classes both fail instead of waiting forever
-R7 an abstract named twice in one bind call is accepted: KILLED exit=1 expect=killed OK
+R6 an abstract named twice in one bind call is accepted: KILLED exit=1 expect=killed OK
     ✖ naming the same abstract twice in one bind call throws and binds nothing
-F1 the 0.1 bind reads an explicit undefined singleton flag as transient: KILLED exit=1 expect=killed OK
-    ✖ the 0.1 bind and rebind read an explicit undefined singleton flag as the default, a singleton
-F2 the constructor check reads comments and strings again: KILLED exit=1 expect=killed OK
-    ✖ a comment that mentions constructor( does not hide an inherited constructor
-    ✖ a string or template literal that mentions constructor( does not hide an inherited constructor
-F3 the constructor check strips comments but not strings: KILLED exit=1 expect=killed OK
-    ✖ a string or template literal that mentions constructor( does not hide an inherited constructor
-F4 the constructor check strips everything, so a declared constructor is missed: KILLED exit=1 expect=killed OK
-    ✖ a constructor declared after a comment and a string is still read as declared
-    ✖ a subclass with its own constructor and no parameters needs no inject list, even when its parent takes one
 mismatches=0

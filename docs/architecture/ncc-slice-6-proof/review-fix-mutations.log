@@ -1,0 +1,76 @@
+mutations in ncc-s06-review-di, tests in ncc-s06-review-di
+baseline exit=0
+C1-must-catch: the reader sees no code: KILLED exit=1 expect=killed OK
+    ✖ a backtick inside a string inside a template part does not end the template
+    ✖ a constructor declared after a comment and a string is still read as declared
+    ✖ a constructor that calls super with its own arguments reads as declared
+    ✖ a constructor that forwards a rest parameter to super reads as a pass-through
+    ✖ a constructor that only forwards arguments to super reads as a pass-through
+    ✖ a constructor that spreads something other than its own rest parameter is declared
+    ✖ a constructor whose parameters hold parentheses is declared, never a pass-through
+    ✖ a division is not read as a regular expression
+    ✖ a subclass with its own constructor and no parameters needs no inject list, even when its parent takes one
+C2-must-survive: comment only: SURVIVED exit=0 expect=survive OK
+C3-must-refuse: syntax break: REFUSED (build failed: src/classSource.ts(84,24): error TS1138: Parameter declaration expected. | src/classSource.ts(84,69): error TS1005: '=>' expected.)  expect=refuse
+G1 line comments are read as code: KILLED exit=1 expect=killed OK
+    ✖ a comment that mentions constructor( does not hide an inherited constructor
+    ✖ a line comment in the class body that mentions constructor( does not count
+G2 block comments are read as code: KILLED exit=1 expect=killed OK
+    ✖ a block comment in the class body that mentions constructor( does not count
+G3 single quotes are read as code: KILLED exit=1 expect=killed OK
+    ✖ a regular expression after a keyword that holds a quote does not open a string
+    ✖ a regular expression after an operator that holds a quote does not open a string
+    ✖ a single-quoted string field that mentions constructor( does not count
+    ✖ a slash inside a character class does not end a regular expression
+    ✖ an escaped quote inside a string does not end it
+G4 double quotes are read as code: KILLED exit=1 expect=killed OK
+    ✖ a double-quoted string field that mentions constructor( does not count
+G5 an escape inside a string is not skipped: KILLED exit=1 expect=killed OK
+    ✖ an escaped quote inside a string does not end it
+G6 templates are read as code: KILLED exit=1 expect=killed OK
+    ✖ a template literal field that mentions constructor( does not count
+G7 a template part is read as template text: KILLED exit=1 expect=killed OK
+    ✖ a backtick inside a string inside a template part does not end the template
+    ✖ a nested template inside a template part does not count
+G8 quotes inside a template part are read as code: KILLED exit=1 expect=killed OK
+    ✖ a backtick inside a string inside a template part does not end the template
+G9 regular expressions are read as code: KILLED exit=1 expect=killed OK
+    ✖ a regular expression after a keyword that holds a quote does not open a string
+    ✖ a regular expression after an operator that holds a quote does not open a string
+    ✖ a slash inside a character class does not end a regular expression
+G10 no operator starts a regular expression: KILLED exit=1 expect=killed OK
+    ✖ a regular expression after an operator that holds a quote does not open a string
+    ✖ a slash inside a character class does not end a regular expression
+G11 no keyword starts a regular expression: KILLED exit=1 expect=killed OK
+    ✖ a regular expression after a keyword that holds a quote does not open a string
+G12 every slash after code starts a regular expression: KILLED exit=1 expect=killed OK
+    ✖ a division is not read as a regular expression
+G13 a slash in a character class ends the expression: KILLED exit=1 expect=killed OK
+    ✖ a slash inside a character class does not end a regular expression
+G14 a constructor at any depth counts: KILLED exit=1 expect=killed OK
+    ✖ a constructor inside a nested class does not count
+    ✖ an object literal method named constructor does not count
+G15 a static method named constructor counts: KILLED exit=1 expect=killed OK
+    ✖ a static method named constructor does not count
+G16 a brace inside the extends clause starts the body: KILLED exit=1 expect=killed OK
+    ✖ a constructor inside the extends clause does not count
+G17 no constructor forwards super(...arguments): KILLED exit=1 expect=killed OK
+    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
+    ✖ a constructor that only forwards arguments to super reads as a pass-through
+G18 no constructor forwards a rest parameter: KILLED exit=1 expect=killed OK
+    ✖ a constructor that forwards a rest parameter to super reads as a pass-through
+G19 any rest parameter counts as forwarded: KILLED exit=1 expect=killed OK
+    ✖ a constructor that spreads something other than its own rest parameter is declared
+G20 an unparsed constructor counts as a pass-through: KILLED exit=1 expect=killed OK
+    ✖ a constructor whose parameters hold parentheses is declared, never a pass-through
+G21 the container ignores pass-through and reads any constructor as declared: KILLED exit=1 expect=killed OK
+    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
+F1 the 0.1 bind reads an explicit undefined singleton flag as transient: KILLED exit=1 expect=killed OK
+    ✖ the 0.1 bind and rebind read an explicit undefined singleton flag as the default, a singleton
+F1b rebind reads a missing flag as transient: KILLED exit=1 expect=killed OK
+    ✖ an old shared build that fails after a rebind leaves the rebound abstract cached
+    ✖ the 0.1 bind and rebind read an explicit undefined singleton flag as the default, a singleton
+F1c the 0.1 bind is always a singleton: KILLED exit=1 expect=killed OK
+    ✖ a 0.1 binding that is not a singleton runs its factory on every get
+    ✖ the 0.1 bind with an explicit false still builds a new instance on every get
+mismatches=0
