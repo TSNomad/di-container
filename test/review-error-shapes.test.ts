@@ -1,7 +1,7 @@
 /**
- * Unit tests for error shapes the slice 6 review left open: a value
- * that is no abstract, and a dependency that failed with something other
- * than an Error.
+ * Unit tests for three error shapes the slice 6 review left open: a value
+ * that is no abstract, a dependency that failed with something other
+ * than an Error, and a class `bind` with no abstracts.
  *
  * These are scaffolding per the implementation phase contract, not the
  * acceptance criterion.
@@ -85,4 +85,18 @@ test('a dependency message names a cause that is neither an Error nor a string',
   const opaque = new AutowireError('Clock', 'dependency', 'Missing', { cause: bare });
   assert.equal(opaque.message, 'Could not resolve Missing for Clock: [object Object]');
   assert.equal(opaque.cause, bare);
+});
+
+test('bind with a concrete and no abstract throws a DiException and binds nothing', () => {
+  class Impl {}
+  const container = new Container();
+
+  assert.throws(
+    () => (container.bind as (concrete: unknown) => unknown)(Impl),
+    (error: unknown) =>
+      error instanceof DiException &&
+      error.message === 'bind(Impl) needs at least one abstract to bind Impl to.'
+  );
+  assert.deepEqual(container.getTokens(), []);
+  assert.equal(container.has(Impl), false);
 });

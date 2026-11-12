@@ -209,6 +209,8 @@ export class Container implements InstanceProvider, HasBindings {
    * @param concrete - The class to build
    * @param abstracts - One or more abstracts the concrete satisfies
    * @returns this
+   * @throws DiException if no abstract is given, or one is not a class,
+   *   a typed token or a string token
    * @throws DuplicateBindingError if any abstract is already bound, by
    *   any form of `bind` or by `bindFactory`, is named twice in the
    *   call, or was already autowired by an earlier `get`. Nothing from
@@ -239,6 +241,11 @@ export class Container implements InstanceProvider, HasBindings {
     ...rest: unknown[]
   ): this | void {
     if (typeof first === 'function') {
+      if (rest.length === 0) {
+        // The types already refuse this. A JavaScript caller or a cast
+        // would otherwise bind nothing and hear nothing about it.
+        throw new DiException(`bind(${first.name}) needs at least one abstract to bind ${first.name} to.`);
+      }
       const keys: Key[] = [];
       for (const abstract of rest) {
         const key = Container.keyOfAbstract(abstract);
