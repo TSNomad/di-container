@@ -1,7 +1,6 @@
 /**
  * Acceptance test: a typed token binds and resolves with the inferred
- * type. Not implemented yet, see the typed tokens architecture note.
- * Marked skip so the suite stays green while the body is a stub.
+ * type. See the typed tokens architecture note.
  */
 
 import { test } from 'node:test';

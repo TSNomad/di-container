@@ -1,8 +1,6 @@
 /**
  * Acceptance test: a string token still works, unchanged, once typed
- * tokens exist. Marked skip along with the rest of this packet's
- * acceptance tests, per the architecture phase contract, even though
- * the string path itself needs no further implementation.
+ * tokens exist.
  */
 
 import { test } from 'node:test';

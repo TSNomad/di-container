@@ -1,0 +1,54 @@
+mutations in ncc-s06-a-di, tests in ncc-s06-a-di
+baseline exit=0
+C1 control, must catch: class bind stores nothing: KILLED exit=1 expect=killed OK
+    ✖ a failed build of a shared instance is not cached under any of its abstracts
+    ✖ a loop that passes through a bound token is found too
+    ✖ a rebind of one abstract while its shared build is in flight is not overwritten by that build
+    ✖ an old shared build that fails after a rebind leaves the rebound abstract cached
+    ✖ an unbound class is autowired from its inject list
+    ✖ bind maps a concrete to an interface token and get builds it
+    ✖ binding an abstract that is already bound throws and binds none of the call
+    ✖ concurrent gets of different abstracts from one bind call build one instance
+    ✖ every abstract in one bind call resolves to the same instance, built once
+    ✖ get of a concrete that is bound only under another abstract builds its own instance
+    ✖ getTokens and BindingNotFoundError name a class abstract by its class name
+    ✖ has reports a class abstract and a token abstract after bind
+    ✖ rebind replaces a class abstract and leaves the other abstracts of its bind call alone
+    ✖ the class form of bind and bindFactory collide on the same abstract, in either order
+    ✖ the inject list supplies constructor arguments in order, from their bindings
+    ✖ the same check applies to a class reached through bind
+C2 control, must survive: comment only: SURVIVED exit=0 expect=survive OK
+C3 control, must refuse: syntax break: REFUSED (build failed: src/Container.ts(678,26): error TS1005: ']' expected.)  expect=refuse
+M11 no autowiring of unbound classes: KILLED exit=1 expect=killed OK
+    ✖ a 0.1 factory binding under a typed token satisfies an inject entry
+    ✖ a call through a constructor property is not read as a constructor
+    ✖ a class that needs constructor parameters but has no inject list fails, naming the class
+    ✖ a class two levels below a constructor with parameters reports those parameters
+    ✖ a class with no constructor parameters and no inject list builds with new
+    ✖ a dependency that failed once is not cached, so a later get of the class that needs it succeeds
+    ✖ a dependency whose constructor throws is wrapped, naming the class that needed it
+    ✖ a failed autowire leaves no mark, so the class can be bound afterwards, requested or reached as an inject entry
+    ✖ a failed autowired build leaves nothing cached, so a later get builds again
+    ✖ a failure two levels down is wrapped once per level
+    ✖ a loop in inject lists fails with the loop as path, before any constructor in it runs
+    ✖ a loop of three classes is found through two waits, before any constructor runs
+    ✖ a loop that passes through a bound token is found too
+    ✖ a loop through a factory and an inject list fails with CircularDependencyError
+    ✖ a method whose name ends in constructor is not read as a constructor
+    ✖ a provider kept by a factory resolves as a top-level get once the factory has settled
+    ✖ a subclass that declares no inject list inherits its parent's list and is built from it
+    ✖ a subclass that inherits a constructor with parameters and declares no inject list fails, naming the subclass
+    ✖ a subclass with its own constructor and no parameters needs no inject list, even when its parent takes one
+    ✖ an autowired class is cached like a bound one
+    ✖ an autowired class is not reported by has
+    ✖ an inject list shorter than the constructor fails, naming the class
+    ✖ an unbound class is autowired from its inject list
+    ✖ an unbound inject entry fails naming the class and the entry, with the lookup error as cause
+    ✖ an undefined inject entry, as a circular import leaves one, fails naming the class, with a TypeError as cause
+    ✖ bind and bindFactory refuse an abstract that get has already autowired
+    ✖ bind refuses a class whose autowired build is still in flight, and one autowired as an inject entry
+    ✖ concurrent gets of two classes that share a slow dependency with no loop both resolve, and it is built once
+    ✖ concurrent gets that enter a loop at different classes both fail instead of waiting forever
+    ✖ get of a concrete that is bound only under another abstract builds its own instance
+    ✖ rebind replaces a class abstract and leaves the other abstracts of its bind call alone
+mismatches=0

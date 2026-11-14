@@ -1,7 +1,7 @@
 {
   "name": "@tsnomad/di-container",
-  "version": "0.1.0",
-  "description": "Dependency injection container with sync and async factories and singleton caching, the TypeScript counterpart to PHPNomad's di-container",
+  "version": "0.2.0",
+  "description": "Dependency injection container with PHPNomad-style class binding, static inject autowiring, factories and singleton caching, the TypeScript counterpart to PHPNomad's di-container",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -30,6 +30,18 @@
     "./create-token": {
       "types": "./dist/createToken.d.ts",
       "default": "./dist/createToken.js"
+    },
+    "./instance-provider": {
+      "types": "./dist/InstanceProvider.d.ts",
+      "default": "./dist/InstanceProvider.js"
+    },
+    "./has-bindings": {
+      "types": "./dist/HasBindings.d.ts",
+      "default": "./dist/HasBindings.js"
+    },
+    "./can-set-container": {
+      "types": "./dist/CanSetContainer.d.ts",
+      "default": "./dist/CanSetContainer.js"
     }
   },
   "files": [

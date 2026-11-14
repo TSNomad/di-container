@@ -1,0 +1,31 @@
+# Lane s06-b: proof for the review's three open container findings, one
+# mutation per guard, plus the three controls, run against this branch.
+# Run: python3 docs/architecture/ncc-slice-6-proof/mutate.py . docs/architecture/ncc-slice-6-proof/s06-b-mutations.py
+MUTATIONS = [
+ ('C1-must-catch bind with no abstract binds nothing again', 'src/Container.ts',
+  '      if (rest.length === 0) {', '      if (rest.length < 0) {', 'killed'),
+ ('C2-must-survive comment only', 'src/describeValue.ts',
+  'export function describeValue(value: unknown): string {',
+  '// control\nexport function describeValue(value: unknown): string {', 'survive'),
+ ('C3-must-refuse syntax error must be refused', 'src/describeValue.ts',
+  'export function describeValue(value: unknown): string {',
+  'export function describeValue(value: unknown): string {{', 'refuse'),
+ ('K1 a value that is no abstract throws a TypeError again', 'src/Container.ts',
+  '    throw new DiException(`${describeValue(abstract)} is not a class',
+  '    throw new TypeError(`${describeValue(abstract)} is not a class', 'killed'),
+ ('K2 the message reads the value through String()', 'src/Container.ts',
+  '    throw new DiException(`${describeValue(abstract)} is not a class',
+  '    throw new DiException(`${String(abstract)} is not a class', 'killed'),
+ ('D1 only an Error cause is named, the code before the fix', 'src/errors.ts',
+  "(options !== undefined && 'cause' in options ? `: ${describeValue(options.cause)}` : '.')",
+  "(options?.cause instanceof Error ? `: ${options.cause.message}` : '.')", 'killed'),
+ ('D2 an undefined cause counts as no cause', 'src/errors.ts',
+  "options !== undefined && 'cause' in options ?", 'options?.cause !== undefined ?', 'killed'),
+ ('D3 any options object counts as a cause', 'src/errors.ts',
+  "options !== undefined && 'cause' in options ?", 'options !== undefined ?', 'killed'),
+ ('D4 an Error cause is named by String(), not its message', 'src/describeValue.ts',
+  '  if (value instanceof Error) {\n    return value.message;\n  }\n', '', 'killed'),
+ ('D5 String() may throw from a message', 'src/describeValue.ts',
+  '  try {\n    return String(value);\n  } catch {\n    return Object.prototype.toString.call(value);\n  }',
+  '  return String(value);', 'killed'),
+]
