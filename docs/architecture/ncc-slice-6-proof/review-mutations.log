@@ -1,0 +1,112 @@
+mutations in ncc-s06-review-di, tests in ncc-s06-review-di
+baseline exit=0
+C1-must-catch: get always rejects: KILLED exit=1 expect=killed OK
+    ✖ a 0.1 binding that is not a singleton runs its factory on every get
+    ✖ a 0.1 factory binding under a typed token satisfies an inject entry
+    ✖ a call through a constructor property is not read as a constructor
+    ✖ a class abstract can be bound to a factory
+    ✖ a class compiled for an older target, with its fields moved into a forwarding constructor, still needs an inject list
+    ✖ a class that needs constructor parameters but has no inject list fails, naming the class
+    ✖ a class two levels below a constructor with parameters reports those parameters
+    ✖ a class with no constructor parameters and no inject list builds with new
+    ✖ a comment that mentions constructor( does not hide an inherited constructor
+    ✖ a constructor error from the requested class passes through unchanged and nothing is cached
+    ✖ a dependency that failed once is not cached, so a later get of the class that needs it succeeds
+    ✖ a dependency whose constructor throws is wrapped, naming the class that needed it
+    ✖ a factory binding resolves to what the factory returns
+    ✖ a factory that gets its own abstract through its provider fails with CircularDependencyError
+    ✖ a failed autowire leaves no mark, so the class can be bound afterwards, requested or reached as an inject entry
+    ✖ a failed autowired build leaves nothing cached, so a later get builds again
+    ✖ a failed build of a shared instance is not cached under any of its abstracts
+    ✖ a failure two levels down is wrapped once per level
+    ✖ a function-style subclass with no parameters, as ES5 output writes it, still needs an inject list
+    ✖ a loop in inject lists fails with the loop as path, before any constructor in it runs
+    ✖ a loop of three classes is found through two waits, before any constructor runs
+    ✖ a loop that passes through a bound token is found too
+    ✖ a loop through a factory and an inject list fails with CircularDependencyError
+    ✖ a loop through a token rebind that is not a singleton rejects with CircularDependencyError
+    ✖ a method whose name ends in constructor is not read as a constructor
+    ✖ a non-empty inject list of its own on a subclass with no constructor is held to the parent constructor
+    ✖ a provider get with a value that is no abstract rejects instead of throwing
+    ✖ a provider kept by a factory resolves as a top-level get once the factory has settled
+    ✖ a rebind of one abstract while its shared build is in flight is not overwritten by that build
+    ✖ a rebind while a bindFactory run is in flight stays in effect when the run finishes
+    ✖ a rejected factory leaves nothing cached, so a later get runs it again
+    ✖ a rejected singleton factory clears its pending cache so a later get retries the factory
+    ✖ a stale singleton resolution does not overwrite a rebind that lands while it is in flight
+    ✖ a string or template literal that mentions constructor( does not hide an inherited constructor
+    ✖ a string token in an inject list resolves a binding made under that string
+    ✖ a string token still works
+    ✖ a subclass that declares no inject list inherits its parent's list and is built from it
+    ✖ a subclass that inherits a constructor with parameters and declares no inject list fails, naming the subclass
+    ✖ a subclass that inherits an empty inject list builds as the class that declared it does
+    ✖ a subclass whose own constructor takes no parameters, under a parent whose constructor does, needs an inject list
+    ✖ a token bound as a string can be checked and resolved through a typed token of the same name
+    ✖ a token bound as a typed token can be checked and resolved through a plain string of the same name
+    ✖ a token rebind factory receives a provider, as a bindFactory factory does, and a loop through it rejects
+    ✖ a token rebind that is not a singleton runs on every get
+    ✖ a typed token binds and resolves with the inferred type
+    ✖ a wait that has ended does not count toward a loop
+    ✖ an async singleton factory runs once under concurrent gets
+    ✖ an autowired class is cached like a bound one
+    ✖ an autowired class is not reported by has
+    ✖ an empty inject list of its own lets that subclass build with the arguments its constructor supplies
+    ✖ an inherited inject list is checked against the first constructor in the chain that takes parameters
+    ✖ an inject list a class declares itself is checked against its own constructor
+    ✖ an inject list shorter than the constructor fails, naming the class
+    ✖ an old shared build that fails after a rebind leaves the rebound abstract cached
+    ✖ an own inject field with no value, or null, counts as no list
+    ✖ an unbound class is autowired from its inject list
+    ✖ an unbound inject entry fails naming the class and the entry, with the lookup error as cause
+    ✖ an unbound typed token still fails with BindingNotFoundError, a DiException
+    ✖ an undefined inject entry, as a circular import leaves one, fails naming the class, with a TypeError as cause
+    ✖ async factories and singleton caching hold for typed tokens
+    ✖ bind and bindFactory refuse an abstract that get has already autowired
+    ✖ bind maps a concrete to an interface token and get builds it
+    ✖ bind refuses a class whose autowired build is still in flight, and one autowired as an inject entry
+    ✖ concurrent factories that share a dependency with no loop both resolve, and it is built once
+    ✖ concurrent gets of a rejecting factory run it once, all reject with that error, and a later get runs it again
+    ✖ concurrent gets of different abstracts from one bind call build one instance
+    ✖ concurrent gets of two classes that share a slow dependency with no loop both resolve, and it is built once
+    ✖ concurrent gets that enter a factory loop at different abstracts both fail instead of waiting forever
+    ✖ concurrent gets that enter a loop at different classes both fail instead of waiting forever
+    ✖ every abstract in one bind call resolves to the same instance, built once
+    ✖ get of a concrete that is bound only under another abstract builds its own instance
+    ✖ getTokens and BindingNotFoundError name a class abstract by its class name
+    ✖ rebind replaces a class abstract and leaves the other abstracts of its bind call alone
+    ✖ the 0.1 bind and rebind read an explicit undefined singleton flag as the default, a singleton
+    ✖ the 0.1 bind with an explicit false still builds a new instance on every get
+    ✖ the factory receives a provider that resolves other bindings from the container
+    ✖ the factory runs once and its result is shared, even under concurrent gets
+    ✖ the inject list supplies constructor arguments in order, from their bindings
+    ✖ the same check applies to a class reached through bind
+    ✖ the same class after a minifier joins its constructor statements still needs an inject list
+    ✖ two classes that share a name never share a binding
+C2-must-survive: comment only: SURVIVED exit=0 expect=survive OK
+C3-must-refuse: syntax break: REFUSED (build failed: src/Container.ts(212,10): error TS1005: ';' expected. | src/Container.ts(212,39): error TS1109: Expression expected.)  expect=refuse
+R1 a failed build stays pending, so its rejection is cached: KILLED exit=1 expect=killed OK
+    ✖ a constructor error from the requested class passes through unchanged and nothing is cached
+    ✖ a dependency that failed once is not cached, so a later get of the class that needs it succeeds
+    ✖ a failed build of a shared instance is not cached under any of its abstracts
+    ✖ a rejected factory leaves nothing cached, so a later get runs it again
+    ✖ a rejected singleton factory clears its pending cache so a later get retries the factory
+    ✖ concurrent gets of a rejecting factory run it once, all reject with that error, and a later get runs it again
+R2 a failed autowire stays recorded: KILLED exit=1 expect=killed OK
+    ✖ a failed autowire leaves no mark, so the class can be bound afterwards, requested or reached as an inject entry
+R3 a short inject list is accepted: KILLED exit=1 expect=killed OK
+    ✖ a non-empty inject list of its own on a subclass with no constructor is held to the parent constructor
+    ✖ an inherited inject list is checked against the first constructor in the chain that takes parameters
+    ✖ an inject list a class declares itself is checked against its own constructor
+    ✖ an inject list shorter than the constructor fails, naming the class
+R4 no loop check when waiting on a build in flight: KILLED exit=1 expect=killed OK
+    ✖ a factory that gets its own abstract through its provider fails with CircularDependencyError
+    ✖ a loop in inject lists fails with the loop as path, before any constructor in it runs
+    ✖ a loop of three classes is found through two waits, before any constructor runs
+    ✖ a loop that passes through a bound token is found too
+    ✖ a loop through a factory and an inject list fails with CircularDependencyError
+    ✖ a token rebind factory receives a provider, as a bindFactory factory does, and a loop through it rejects
+    ✖ concurrent gets that enter a factory loop at different abstracts both fail instead of waiting forever
+    ✖ concurrent gets that enter a loop at different classes both fail instead of waiting forever
+R5 an abstract named twice in one bind call is accepted: KILLED exit=1 expect=killed OK
+    ✖ naming the same abstract twice in one bind call throws and binds nothing
+mismatches=0
